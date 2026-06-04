@@ -33,7 +33,7 @@ local Window = Rayfield:CreateWindow({
       FileName = "LEBasicKey",
       SaveKey = true,
       GrabKeyFromSite = true,
-      Key = {"https://pastebin.com/raw/kiQUiJhe"}
+      Key = {"https://raw.githubusercontent.com/LEDeveloper-web/LEScript-Key/refs/heads/main/KEY?token=GHSAT0AAAAAAD6ZBJNZO4G2SQ6AZQVLHM2E2RBBUOA"}
    }
 })
 
