@@ -116,16 +116,63 @@ local TrollASection = TrollTab:AddSection({
     Name = "Troll A"
 })
 
--- Variable to store username
+-- Variable to store username (saved)
+local savedUsername = ""
 local targetUsername = ""
 
--- Textbox for entering username
+-- Try to load saved username from config
+local function LoadSavedUsername()
+    local success, data = pcall(function()
+        return readfile("UsernameSave.txt")
+    end)
+    if success and data then
+        savedUsername = data
+        targetUsername = savedUsername
+        KillPlayerTextbox:Set(savedUsername)
+    end
+end
+
+-- Save username to file
+local function SaveUsername(username)
+    if username ~= "" then
+        pcall(function()
+            writefile("UsernameSave.txt", username)
+            savedUsername = username
+        end)
+    end
+end
+
+-- Extended Textbox for entering username
 local KillPlayerTextbox = TrollASection:AddTextbox({
-    Name = "Put Username",
+    Name = "Put Username (Click to edit)",
     Default = "",
-    TextDisappear = true,
+    TextDisappear = false,
     Callback = function(Value)
         targetUsername = Value
+        if Value ~= "" then
+            SaveUsername(Value)
+        end
+    end    
+})
+
+-- Load previously saved username
+LoadSavedUsername()
+
+-- Clear Button to reset the textbox
+local ClearButton = TrollASection:AddButton({
+    Name = "Clear Username",
+    Callback = function()
+        targetUsername = ""
+        KillPlayerTextbox:Set("")
+        pcall(function()
+            writefile("UsernameSave.txt", "")
+        end)
+        OrionLib:MakeNotification({
+            Name = "Cleared",
+            Content = "Username has been cleared!",
+            Image = nil,
+            Time = 2
+        })
     end    
 })
 
@@ -153,7 +200,7 @@ local ConfirmKillButton = TrollASection:AddButton({
         end
         
         if targetPlayer then
-            -- Kill the player by removing their character or setting health to 0
+            -- Kill the player
             if targetPlayer.Character and targetPlayer.Character.Humanoid then
                 targetPlayer.Character.Humanoid.Health = 0
                 OrionLib:MakeNotification({
@@ -178,12 +225,77 @@ local ConfirmKillButton = TrollASection:AddButton({
                 Time = 3
             })
         end
-        
-        -- Clear the textbox
-        targetUsername = ""
-        KillPlayerTextbox:Set("")
     end    
 })
+
+-- Create Floating Circle to open/close UI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FloatingButtonGUI"
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local floatingButton = Instance.new("ImageButton")
+floatingButton.Size = UDim2.new(0, 50, 0, 50)
+floatingButton.Position = UDim2.new(0, 20, 0, 100)
+floatingButton.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+floatingButton.BackgroundTransparency = 0
+floatingButton.BorderSizePixels = 0
+floatingButton.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+floatingButton.ImageTransparency = 1
+floatingButton.Parent = screenGui
+
+-- Add corner rounding
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = floatingButton
+
+-- Add a text label inside the button
+local buttonText = Instance.new("TextLabel")
+buttonText.Size = UDim2.new(1, 0, 1, 0)
+buttonText.BackgroundTransparency = 1
+buttonText.Text = "M"
+buttonText.TextColor3 = Color3.fromRGB(255, 255, 255)
+buttonText.TextScaled = true
+buttonText.Font = Enum.Font.GothamBold
+buttonText.Parent = floatingButton
+
+-- Make button draggable
+local dragging = false
+local dragStart
+local startPos
+
+floatingButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = floatingButton.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        floatingButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Toggle UI when button is clicked
+local uiVisible = true
+floatingButton.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    if uiVisible then
+        OrionLib:Open()
+        floatingButton.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+    else
+        OrionLib:Close()
+        floatingButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end
+end)
 
 -- Handle character respawn
 game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
@@ -205,3 +317,7 @@ end)
 
 -- Initialize the UI
 OrionLib:Init()
+
+-- Auto-open UI to show it exists, then close after 2 seconds
+task.wait(2)
+OrionLib:Close()
