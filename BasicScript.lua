@@ -1,36 +1,50 @@
 -- Load the Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Create the Window
+-- ============= CREATE WINDOW WITH ALL FEATURES =============
 local Window = Rayfield:CreateWindow({
     Name = "LE Basic Executed",
-    Icon = nil,
-    LoadingTitle = "Executed Script",
-    LoadingSubtitle = "Loading...",
+    Icon = 0,
+    LoadingTitle = "LE Basic Executed",
+    LoadingSubtitle = "Loading Script...",
+    ShowText = "LEModz",
     Theme = "Default",
+    
+    ToggleUIKeybind = "K",
+    
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings = false,
+    
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "MovementConfig",
-        FileName = "MovementConfig"
+        FolderName = "LEBasicExecuted",
+        FileName = "LEBasicExecuted"
     },
-    DragSettings = {
+    
+    Discord = {
         Enabled = true,
-        Locked = false
+        Invite = "NBdp4zuJtt", -- Your Discord invite code (from discord.gg/NBdp4zuJtt)
+        RememberJoins = true
     },
-    Keybind = {
-        Enabled = false
+    
+    KeySystem = true, -- ENABLED - using your Pastebin key
+    KeySettings = {
+        Title = "LE Basic Executed",
+        Subtitle = "Enter License Key",
+        Note = "Join our Discord to get a key: discord.gg/NBdp4zuJtt",
+        FileName = "LEBasicKey",
+        SaveKey = true,
+        GrabKeyFromSite = true, -- Set to true to fetch key from Pastebin
+        Key = {"https://pastebin.com/raw/kiQUiJhe"} -- Pastebin raw URL
     }
 })
 
--- Create Main Tab
-local MainTab = Window:CreateTab({
-    Name = "Main",
-    Icon = nil
-})
-
--- Create Main Section
-local MainSection = MainTab:CreateSection({
-    Name = "Movement Settings"
+-- Welcome notification
+Rayfield:Notify({
+    Title = "LE Basic Executed",
+    Content = "Script loaded! Press K to toggle UI. Join discord.gg/NBdp4zuJtt for keys.",
+    Duration = 8,
+    Image = 4483362458
 })
 
 -- Function to get character safely
@@ -43,8 +57,19 @@ local function GetCharacter()
     return character
 end
 
+-- ============= CREATE MAIN TAB =============
+local MainTab = Window:CreateTab({
+    Name = "Main",
+    Icon = nil
+})
+
+-- Movement Settings Section
+local MovementSection = MainTab:CreateSection({
+    Name = "Movement Settings"
+})
+
 -- WalkSpeed Slider
-local WalkSpeedSlider = MainSection:CreateSlider({
+local WalkSpeedSlider = MovementSection:CreateSlider({
     Name = "WalkSpeed",
     Range = {1, 100},
     Increment = 1,
@@ -60,7 +85,7 @@ local WalkSpeedSlider = MainSection:CreateSlider({
 })
 
 -- JumpPower Slider
-local JumpPowerSlider = MainSection:CreateSlider({
+local JumpPowerSlider = MovementSection:CreateSlider({
     Name = "JumpPower",
     Range = {1, 200},
     Increment = 1,
@@ -75,14 +100,55 @@ local JumpPowerSlider = MainSection:CreateSlider({
     end
 })
 
--- Fly Section
+-- Reset Options Section
+local ResetSection = MainTab:CreateSection({
+    Name = "Reset Options"
+})
+
+-- Default WalkSpeed Button
+local DefaultWalkSpeedButton = ResetSection:CreateButton({
+    Name = "Default WalkSpeed (16)",
+    Callback = function()
+        WalkSpeedSlider:SetValue(16)
+        local character = GetCharacter()
+        if character and character.Humanoid then
+            character.Humanoid.WalkSpeed = 16
+        end
+        Rayfield:Notify({
+            Title = "WalkSpeed Reset",
+            Content = "WalkSpeed has been set to default (16)",
+            Duration = 3,
+            Image = 4483362458
+        })
+    end
+})
+
+-- Default JumpPower Button
+local DefaultJumpPowerButton = ResetSection:CreateButton({
+    Name = "Default JumpPower (50)",
+    Callback = function()
+        JumpPowerSlider:SetValue(50)
+        local character = GetCharacter()
+        if character and character.Humanoid then
+            character.Humanoid.JumpPower = 50
+        end
+        Rayfield:Notify({
+            Title = "JumpPower Reset",
+            Content = "JumpPower has been set to default (50)",
+            Duration = 3,
+            Image = 4483362458
+        })
+    end
+})
+
+-- ============= FLY SETTINGS =============
 local FlySection = MainTab:CreateSection({
     Name = "Fly Settings"
 })
 
 -- Fly Variables
 local flying = false
-local flySpeed = 1
+local flySpeed = 16
 local noclipEnabled = false
 local bodyVelocity = nil
 local bodyGyro = nil
@@ -221,16 +287,13 @@ end)
 -- Fly Speed Slider
 local FlySpeedSlider = FlySection:CreateSlider({
     Name = "Fly Speed",
-    Range = {1, 10},
+    Range = {1, 50},
     Increment = 1,
     Suffix = "speed",
-    CurrentValue = 1,
+    CurrentValue = 16,
     Flag = "FlySpeed",
     Callback = function(Value)
         flySpeed = Value
-        if flying then
-            -- Speed will be applied in update loop
-        end
     end
 })
 
@@ -243,9 +306,10 @@ local FlyToggle = FlySection:CreateToggle({
         if Value then
             startFly(flySpeed, noclipEnabled)
             Rayfield:Notify({
-                Title = "Fly",
-                Content = "Fly enabled! Press Q to stop.",
-                Duration = 3
+                Title = "Fly Enabled",
+                Content = "Press Q to stop flying",
+                Duration = 3,
+                Image = 4483362458
             })
         else
             stopFly()
@@ -261,79 +325,43 @@ local FlyNoclipToggle = FlySection:CreateToggle({
     Callback = function(Value)
         noclipEnabled = Value
         if flying then
-            -- Restart fly with new noclip setting
             local wasFlying = flying
             if wasFlying then
                 stopFly()
                 startFly(flySpeed, noclipEnabled)
             end
         end
-        if Value then
-            Rayfield:Notify({
-                Title = "Noclip",
-                Content = "Noclip enabled! You can fly through walls.",
-                Duration = 2
-            })
-        else
-            Rayfield:Notify({
-                Title = "Noclip",
-                Content = "Noclip disabled! Collision restored.",
-                Duration = 2
-            })
-        end
-    end
-})
-
--- Default WalkSpeed Button
-local DefaultWalkSpeedButton = MainSection:CreateButton({
-    Name = "Default WalkSpeed",
-    Callback = function()
-        WalkSpeedSlider:SetValue(16)
-        local character = GetCharacter()
-        if character and character.Humanoid then
-            character.Humanoid.WalkSpeed = 16
-        end
+        local status = Value and "enabled" or "disabled"
         Rayfield:Notify({
-            Title = "WalkSpeed Reset",
-            Content = "WalkSpeed has been set to default (16)",
-            Duration = 3
+            Title = "Noclip",
+            Content = "Noclip " .. status,
+            Duration = 2,
+            Image = 4483362458
         })
     end
 })
 
--- Default JumpPower Button
-local DefaultJumpPowerButton = MainSection:CreateButton({
-    Name = "Default JumpPower",
-    Callback = function()
-        JumpPowerSlider:SetValue(50)
-        local character = GetCharacter()
-        if character and character.Humanoid then
-            character.Humanoid.JumpPower = 50
-        end
-        Rayfield:Notify({
-            Title = "JumpPower Reset",
-            Content = "JumpPower has been set to default (50)",
-            Duration = 3
-        })
-    end
+-- Fly Controls Label
+local FlyInfo = FlySection:CreateLabel({
+    Name = "Controls: WASD - Move | Space - Up | Ctrl - Down | Q - Stop"
 })
 
--- Create Troll Tab
+-- ============= TROLL TAB =============
 local TrollTab = Window:CreateTab({
     Name = "Troll",
     Icon = nil
 })
 
--- Create Troll A Section
+-- Troll A Section - Kill Player
 local TrollASection = TrollTab:CreateSection({
     Name = "Troll A - Kill Player"
 })
 
--- Variable to store username (saved)
+-- Variables for username
 local savedUsername = ""
 local targetUsername = ""
 
--- Try to load saved username from config
+-- Load saved username
 local function LoadSavedUsername()
     local success, data = pcall(function()
         return readfile("UsernameSave.txt")
@@ -345,7 +373,7 @@ local function LoadSavedUsername()
     end
 end
 
--- Save username to file
+-- Save username
 local function SaveUsername(username)
     if username ~= "" then
         pcall(function()
@@ -355,23 +383,22 @@ local function SaveUsername(username)
     end
 end
 
--- Extended Textbox for entering username
+-- Username Input
 local KillPlayerTextbox = TrollASection:CreateInput({
-    Name = "Put Username",
+    Name = "Target Username",
+    CurrentValue = "",
     PlaceholderText = "Enter username here...",
     RemoveTextAfterFocusLost = false,
-    Callback = function(Value)
-        targetUsername = Value
-        if Value ~= "" then
-            SaveUsername(Value)
+    Flag = "TargetUsername",
+    Callback = function(Text)
+        targetUsername = Text
+        if Text ~= "" then
+            SaveUsername(Text)
         end
     end
 })
 
--- Load previously saved username
-LoadSavedUsername()
-
--- Clear Button to reset the textbox
+-- Clear Username Button
 local ClearButton = TrollASection:CreateButton({
     Name = "Clear Username",
     Callback = function()
@@ -383,25 +410,26 @@ local ClearButton = TrollASection:CreateButton({
         Rayfield:Notify({
             Title = "Cleared",
             Content = "Username has been cleared!",
-            Duration = 2
+            Duration = 2,
+            Image = 4483362458
         })
     end
 })
 
--- Confirm Button to kill player
+-- Kill Confirm Button
 local ConfirmKillButton = TrollASection:CreateButton({
-    Name = "Confirm Button",
+    Name = "Kill Player",
     Callback = function()
         if targetUsername == "" or targetUsername == nil then
             Rayfield:Notify({
                 Title = "Error",
                 Content = "Please enter a username first!",
-                Duration = 3
+                Duration = 3,
+                Image = 4483362458
             })
             return
         end
         
-        -- Find the player
         local targetPlayer = nil
         for _, player in pairs(game.Players:GetPlayers()) do
             if string.lower(player.Name) == string.lower(targetUsername) or string.lower(player.DisplayName) == string.lower(targetUsername) then
@@ -411,32 +439,34 @@ local ConfirmKillButton = TrollASection:CreateButton({
         end
         
         if targetPlayer then
-            -- Kill the player
             if targetPlayer.Character and targetPlayer.Character.Humanoid then
                 targetPlayer.Character.Humanoid.Health = 0
                 Rayfield:Notify({
                     Title = "Killed",
                     Content = "You killed " .. targetPlayer.Name,
-                    Duration = 3
+                    Duration = 3,
+                    Image = 4483362458
                 })
             else
                 Rayfield:Notify({
                     Title = "Error",
                     Content = targetPlayer.Name .. " does not have a character!",
-                    Duration = 3
+                    Duration = 3,
+                    Image = 4483362458
                 })
             end
         else
             Rayfield:Notify({
                 Title = "Error",
                 Content = "Player not found: " .. targetUsername,
-                Duration = 3
+                Duration = 3,
+                Image = 4483362458
             })
         end
     end
 })
 
--- ============= TROLL B SECTION - MODEL ID (HAND ITEM) =============
+-- Troll B Section - Hand Item
 local TrollBSection = TrollTab:CreateSection({
     Name = "Troll B - Hand Item (Model ID)"
 })
@@ -446,7 +476,7 @@ local currentItem = nil
 local itemConnection = nil
 local character = player.Character or player.CharacterAdded:Wait()
 
--- Function to clear current hand item
+-- Function to clear hand item
 local function clearHandItem()
     if itemConnection then
         itemConnection:Disconnect()
@@ -458,7 +488,6 @@ local function clearHandItem()
         currentItem = nil
     end
     
-    -- Also try to remove from character
     local char = player.Character
     if char then
         local existingItem = char:FindFirstChild("HeldItem")
@@ -468,9 +497,8 @@ local function clearHandItem()
     end
 end
 
--- Function to equip item in hand
+-- Function to equip hand item
 local function equipHandItem(modelId)
-    -- Clear any existing item
     clearHandItem()
     
     local char = player.Character
@@ -481,14 +509,12 @@ local function equipHandItem(modelId)
     
     local rightHand = char:FindFirstChild("RightHand")
     if not rightHand then
-        -- Wait for right hand to load
         repeat
             task.wait()
             rightHand = char:FindFirstChild("RightHand")
         until rightHand
     end
     
-    -- Load the model
     local success, model = pcall(function()
         return game:GetService("InsertService"):LoadAsset(modelId)
     end)
@@ -497,7 +523,6 @@ local function equipHandItem(modelId)
         return false
     end
     
-    -- Find a part to use as the held item
     local itemPart = nil
     for _, child in ipairs(model:GetChildren()) do
         if child:IsA("BasePart") then
@@ -511,7 +536,6 @@ local function equipHandItem(modelId)
         return false
     end
     
-    -- Clone and setup the item
     currentItem = itemPart:Clone()
     currentItem.Name = "HeldItem"
     currentItem.Size = Vector3.new(1, 1, 2)
@@ -519,7 +543,6 @@ local function equipHandItem(modelId)
     currentItem.Anchored = false
     currentItem.Parent = char
     
-    -- Create weld to attach to hand
     local weld = Instance.new("Weld")
     weld.Part0 = rightHand
     weld.Part1 = currentItem
@@ -528,7 +551,6 @@ local function equipHandItem(modelId)
     
     model:Destroy()
     
-    -- Add click function to item
     local clickDetector = Instance.new("ClickDetector")
     clickDetector.Parent = currentItem
     clickDetector.MaxActivationDistance = 10
@@ -541,13 +563,13 @@ local function equipHandItem(modelId)
                 Rayfield:Notify({
                     Title = "Item Used",
                     Content = "You killed " .. clicker.Parent.Name .. " with the item!",
-                    Duration = 2
+                    Duration = 2,
+                    Image = 4483362458
                 })
             end
         end
     end)
     
-    -- Handle character respawn
     if itemConnection then itemConnection:Disconnect() end
     itemConnection = player.CharacterAdded:Connect(function(newChar)
         character = newChar
@@ -571,34 +593,37 @@ end
 -- Model ID Input
 local ModelIDInput = TrollBSection:CreateInput({
     Name = "Model ID",
+    CurrentValue = "",
     PlaceholderText = "Enter Model ID (e.g., 1234567890)",
     RemoveTextAfterFocusLost = false,
-    Callback = function(Value)
+    Flag = "ModelID",
+    Callback = function(Text)
         -- Store for confirm button
     end
 })
 
--- Confirm Button for Model ID
+-- Equip Item Button
 local ConfirmModelButton = TrollBSection:CreateButton({
     Name = "Equip Item in Hand",
     Callback = function()
-        local modelId = ModelIDInput.Value
+        local modelId = ModelIDInput.CurrentValue
         if modelId == "" or modelId == nil then
             Rayfield:Notify({
                 Title = "Error",
                 Content = "Please enter a Model ID first!",
-                Duration = 3
+                Duration = 3,
+                Image = 4483362458
             })
             return
         end
         
-        -- Convert to number if possible
         local numId = tonumber(modelId)
         if not numId then
             Rayfield:Notify({
                 Title = "Error",
                 Content = "Invalid Model ID! Please enter a number.",
-                Duration = 3
+                Duration = 3,
+                Image = 4483362458
             })
             return
         end
@@ -607,14 +632,16 @@ local ConfirmModelButton = TrollBSection:CreateButton({
         if success then
             Rayfield:Notify({
                 Title = "Item Equipped",
-                Content = "Item has been equipped in your hand! Click on players to kill them.",
-                Duration = 4
+                Content = "Item equipped! Click on players to kill them.",
+                Duration = 4,
+                Image = 4483362458
             })
         else
             Rayfield:Notify({
                 Title = "Error",
                 Content = "Failed to load model. Check if Model ID is valid.",
-                Duration = 3
+                Duration = 3,
+                Image = 4483362458
             })
         end
     end
@@ -628,19 +655,64 @@ local ClearItemButton = TrollBSection:CreateButton({
         Rayfield:Notify({
             Title = "Item Cleared",
             Content = "Hand item has been removed.",
-            Duration = 2
+            Duration = 2,
+            Image = 4483362458
         })
     end
 })
 
--- Example Model IDs Info
+-- Example IDs Label
 local ExampleInfo = TrollBSection:CreateLabel({
-    Name = "Example Model IDs: 1234567890 (Sword), 9876543210 (Gun)"
+    Name = "Example IDs: 1234567890 (Sword), 9876543210 (Gun)"
 })
 
--- ============= END OF TROLL B SECTION =============
+-- ============= SETTINGS TAB =============
+local SettingsTab = Window:CreateTab({
+    Name = "Settings",
+    Icon = nil
+})
 
--- Create Floating Circle to open/close UI
+-- UI Settings Section
+local UISettingsSection = SettingsTab:CreateSection({
+    Name = "UI Settings"
+})
+
+-- Theme Dropdown
+local ThemeDropdown = UISettingsSection:CreateDropdown({
+    Name = "Theme",
+    Options = {"Default", "Dark", "Light", "Midnight", "Ocean", "Sunset"},
+    CurrentOption = {"Default"},
+    MultipleOptions = false,
+    Flag = "Theme",
+    Callback = function(Options)
+        Rayfield:ChangeTheme(Options[1])
+        Rayfield:Notify({
+            Title = "Theme Changed",
+            Content = "Theme set to: " .. Options[1],
+            Duration = 2,
+            Image = 4483362458
+        })
+    end
+})
+
+-- UI Toggle Button
+local UIToggleButton = UISettingsSection:CreateButton({
+    Name = "Toggle UI",
+    Callback = function()
+        Rayfield:Toggle()
+    end
+})
+
+-- Info Section
+local InfoSection = SettingsTab:CreateSection({
+    Name = "Information"
+})
+
+local InfoParagraph = SettingsTab:CreateLabel({
+    Name = "LE Basic Executed v1.0.0 | Library: Rayfield | Controls: K - Toggle UI | Q - Stop flying"
+})
+
+-- ============= FLOATING BUTTON =============
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FloatingButtonGUI"
 screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -655,12 +727,10 @@ floatingButton.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 floatingButton.ImageTransparency = 1
 floatingButton.Parent = screenGui
 
--- Add corner rounding
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(1, 0)
 corner.Parent = floatingButton
 
--- Add a text label inside the button
 local buttonText = Instance.new("TextLabel")
 buttonText.Size = UDim2.new(1, 0, 1, 0)
 buttonText.BackgroundTransparency = 1
@@ -696,7 +766,6 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
     end
 end)
 
--- Toggle UI when button is clicked
 local uiVisible = true
 floatingButton.MouseButton1Click:Connect(function()
     uiVisible = not uiVisible
@@ -709,12 +778,10 @@ floatingButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Handle character respawn
+-- ============= CHARACTER RESPAWN HANDLER =============
 game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
-    -- Wait for humanoid to load
     character:WaitForChild("Humanoid")
     
-    -- Re-apply current slider values
     local currentWalkSpeed = WalkSpeedSlider.CurrentValue
     local currentJumpPower = JumpPowerSlider.CurrentValue
     
@@ -726,13 +793,11 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
         character.Humanoid.JumpPower = currentJumpPower
     end
     
-    -- If fly was enabled before respawn, restart it
     if FlyToggle.CurrentValue then
         task.wait(0.5)
         startFly(flySpeed, noclipEnabled)
     end
     
-    -- If there was a hand item, re-equip it
     if currentItem then
         task.wait(0.5)
         local newRightHand = character:FindFirstChild("RightHand")
@@ -747,13 +812,6 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
     end
 end)
 
--- Auto-open UI to show it exists, then close after 2 seconds
+-- Auto-close UI after 2 seconds
 task.wait(2)
 Rayfield:Close()
-
--- Notify that script loaded successfully
-Rayfield:Notify({
-    Title = "LE Basic Executed",
-    Content = "Script loaded successfully!",
-    Duration = 3
-})
