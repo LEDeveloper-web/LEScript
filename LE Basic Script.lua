@@ -1,767 +1,683 @@
--- LEModz Key System
--- Loadstring: loadstring(game:HttpGet("https://raw.githubusercontent.com/LEModz/KeySystem/main/Loader.lua"))()
+-- LEModz GUI Script
+--[[
+    Instructions:
+    This script creates a fully functional GUI with:
+    - Button System (Image + Transparent Button)
+    - Key System with online validation
+    - Discord link copying
+    - 24-hour countdown timer
+    - Draggable frames (with screen bounds)
+    - Notification system
+    
+    To use as a loadstring:
+    loadstring(game:HttpGet("https://pastebin.com/raw/your_paste_id"))()
+--]]
 
+-- ================================
+-- SERVICES & SETUP
+-- ================================
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local Mouse = Player:GetMouse()
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local Clipboard = setclipboard or (syn and syn.clipboard) or (function() end)
+local TweenService = game:GetService("TweenService")
 
--- Asset URLs
-local IMG_BUTTON_URL = "https://www.dropbox.com/scl/fi/777yhr2rb2kz0q2ms9td3/LEModz_Img_Button.jpg?rlkey=2ru00hr721mxepl347rbfmwok&st=zddam1ge&dl=1"
-local BG_URL = "https://www.dropbox.com/scl/fi/c4wq3ddady4yamawm2apg/LEModz_Background.jpeg?rlkey=czewj8x20qdjmar7hcrw977x3&st=dont9vp4&dl=1"
-local KEY_VALIDATION_URL = "https://raw.githubusercontent.com/LEDeveloper-web/LEScript-Key/refs/heads/main/KEY"
-local DISCORD_INVITE = "https://discord.gg/NBdp4zuJtt"
+-- Check if running on mobile
+local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
--- Get screen size boundaries
-local screenSize = UserInputService:GetMouse().ViewSizeX
-local screenHeight = UserInputService:GetMouse().ViewSizeY
-
--- Key Storage
-local savedKey = nil
-local keyExpiry = nil
-local keyConfirmed = false
-local countdownStartTime = nil
-local countdownRemaining = 0
-local validKeys = {}
-
--- Fetch valid keys from GitHub
-local function fetchValidKeys()
-    local success, response = pcall(function()
-        return game:HttpGet(KEY_VALIDATION_URL)
-    end)
-    
-    if success and response then
-        for line in response:gsub("\r", ""):gmatch("[^\n]+") do
-            local key = line:gsub("^%s+", ""):gsub("%s+$", "")
-            if key ~= "" then
-                validKeys[key] = true
-            end
-        end
-        print("LEModz: Loaded valid keys")
-        return true
-    else
-        warn("LEModz: Failed to fetch valid keys")
-        return false
+-- ================================
+-- UTILITY FUNCTIONS
+-- ================================
+local function notify(title, text, duration)
+    -- Frame5 Notifier System (Frame5)
+    local notificationHolder = Player.PlayerGui:FindFirstChild("LEModzNotifications") or Instance.new("ScreenGui")
+    if not notificationHolder.Parent then
+        notificationHolder.Name = "LEModzNotifications"
+        notificationHolder.Parent = Player.PlayerGui
+        notificationHolder.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     end
-end
-
--- Load or generate key from stored data
-local function loadKeyData()
-    local success, data = pcall(function()
-        if syn and syn.crypt and readfile then
-            local fileContent = readfile("LEModz_Key.txt")
-            if fileContent and fileContent ~= "" then
-                return HttpService:JSONDecode(syn.crypt.decrypt(fileContent))
-            end
-        end
-        return nil
-    end)
     
-    if success and data and data.key and data.expiry then
-        savedKey = data.key
-        keyExpiry = data.expiry
-        if os.time() < keyExpiry then
-            keyConfirmed = true
-            countdownStartTime = data.startTime or (os.time() - (24 * 3600) + (keyExpiry - os.time()))
-        else
-            keyConfirmed = false
-            savedKey = nil
-            keyExpiry = nil
-            countdownStartTime = nil
-        end
-    end
-end
-
-local function saveKeyData(key, duration)
-    if syn and syn.crypt and writefile then
-        local data = {
-            key = key,
-            expiry = os.time() + duration,
-            startTime = os.time()
-        }
-        local success, encrypted = pcall(function()
-            return syn.crypt.encrypt(HttpService:JSONEncode(data))
-        end)
-        if success and encrypted then
-            writefile("LEModz_Key.txt", encrypted)
-        end
-        savedKey = key
-        keyExpiry = data.expiry
-        keyConfirmed = true
-        countdownStartTime = os.time()
-    end
-end
-
--- Create ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LEModzGUI"
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = game:GetService("CoreGui")
-
--- ========== NOTIFICATION SYSTEM ==========
-local function createNotification(title, message, duration)
-    local notifFrame = Instance.new("Frame")
-    notifFrame.Size = UDim2.new(0, 300, 0, 60)
-    notifFrame.Position = UDim2.new(0.5, -150, 0, 100)
-    notifFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    notifFrame.BackgroundTransparency = 0.1
-    notifFrame.BorderSizePixel = 1
-    notifFrame.BorderColor3 = Color3.fromRGB(255, 215, 0)
-    notifFrame.Parent = ScreenGui
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 60)
+    frame.Position = UDim2.new(0.5, -150, 0, 10)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    frame.BorderSizePixel = 0
+    frame.BackgroundTransparency = 0.1
+    frame.ClipsDescendants = true
     
-    local bg = Instance.new("ImageLabel")
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundTransparency = 1
-    bg.Image = BG_URL
-    bg.ScaleType = Enum.ScaleType.Slice
-    bg.SliceCenter = Rect.new(20, 20, 20, 20)
-    bg.Parent = notifFrame
+    -- Corner rounding
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
     
+    -- Title
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, 0, 0, 25)
-    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 5)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
-    titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    titleLabel.TextScaled = true
+    titleLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.Parent = notifFrame
+    titleLabel.TextSize = 14
+    titleLabel.Parent = frame
     
+    -- Message
     local msgLabel = Instance.new("TextLabel")
-    msgLabel.Size = UDim2.new(1, 0, 0, 30)
-    msgLabel.Position = UDim2.new(0, 0, 0, 25)
+    msgLabel.Size = UDim2.new(1, -20, 0, 30)
+    msgLabel.Position = UDim2.new(0, 10, 0, 30)
     msgLabel.BackgroundTransparency = 1
-    msgLabel.Text = message
-    msgLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    msgLabel.TextScaled = true
+    msgLabel.Text = text
+    msgLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
+    msgLabel.TextYAlignment = Enum.TextYAlignment.Top
     msgLabel.Font = Enum.Font.Gotham
-    msgLabel.Parent = notifFrame
+    msgLabel.TextSize = 12
+    msgLabel.TextWrapped = true
+    msgLabel.Parent = frame
     
-    notifFrame.Position = UDim2.new(0.5, -150, 0, -100)
-    local tweenIn = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = UDim2.new(0.5, -150, 0, 100)})
+    -- Progress bar (timeout)
+    local progress = Instance.new("Frame")
+    progress.Size = UDim2.new(1, 0, 0, 3)
+    progress.Position = UDim2.new(0, 0, 1, -3)
+    progress.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    progress.BorderSizePixel = 0
+    progress.Parent = frame
+    
+    -- Stack notifications
+    local existing = notificationHolder:GetChildren()
+    local yOffset = (#existing * 70) + 10
+    frame.Position = UDim2.new(0.5, -150, 0, yOffset)
+    
+    frame.Parent = notificationHolder
+    
+    -- Animate in
+    frame.BackgroundTransparency = 1
+    frame.Position = UDim2.new(0.5, -150, 0, yOffset - 20)
+    local tweenIn = TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.1, Position = UDim2.new(0.5, -150, 0, yOffset)})
     tweenIn:Play()
     
-    game:GetService("Debris"):AddItem(notifFrame, duration)
-    task.wait(duration - 0.5)
-    local tweenOut = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Position = UDim2.new(0.5, -150, 0, -100)})
-    tweenOut:Play()
-    task.wait(0.3)
-    notifFrame:Destroy()
+    -- Animate progress bar
+    local tweenProgress = TweenService:Create(progress, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 0, 3)})
+    tweenProgress:Play()
+    
+    -- Auto remove after duration
+    task.delay(duration, function()
+        local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 1, Position = UDim2.new(0.5, -150, 0, yOffset - 20)})
+        tweenOut:Play()
+        tweenOut.Completed:Connect(function()
+            frame:Destroy()
+        end)
+    end)
 end
 
--- GUIN1: Notify after loading
-createNotification("✅ LEModz System", "Loadstring Script Loaded Successfully!", 3)
-
--- Background Image for GUI and GUIGetKey
-local function applyBackground(frame, url)
-    local bg = Instance.new("ImageLabel")
-    bg.Name = "Background"
-    bg.Size = UDim2.new(1,0,1,0)
-    bg.Position = UDim2.new(0,0,0,0)
-    bg.BackgroundTransparency = 1
-    bg.Image = url
-    bg.ScaleType = Enum.ScaleType.Slice
-    bg.SliceCenter = Rect.new(20,20,20,20)
-    bg.Parent = frame
-end
-
--- ========== DRAG SYSTEM WITH BOUNDARIES ==========
-local function makeDraggableWithBounds(frame, dragButton, frameSize)
+-- Function to make frames draggable with bounds
+local function makeDraggable(frame, parentScreen)
     local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    local startMousePos = nil
+    local dragStartPos = nil
+    local frameStartPos = nil
+    local screenBounds = parentScreen.AbsoluteSize
     
-    -- Get actual screen size for boundaries
-    local function getScreenBounds()
-        local viewportSize = UserInputService:GetMouse().ViewSizeX
-        local viewportHeight = UserInputService:GetMouse().ViewSizeY
-        return viewportSize, viewportHeight
-    end
-    
-    dragButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            startMousePos = input.Position
+            dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
+            frameStartPos = frame.Position
         end
     end)
     
-    dragButton.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
-            local delta = input.Position - dragStart
-            local screenW, screenH = getScreenBounds()
+    frame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
+            local newX = frameStartPos.X.Offset + delta.X
+            local newY = frameStartPos.Y.Offset + delta.Y
             
-            -- Calculate new position with boundaries
-            local newX = startPos.X.Offset + delta.X
-            local newY = startPos.Y.Offset + delta.Y
-            
-            -- Apply boundaries (prevent going off-screen)
-            -- Left boundary (minimum 0)
-            if newX < 0 then
-                newX = 0
-            end
-            -- Right boundary (screen width minus frame width)
-            if newX + frameSize.X.Offset > screenW then
-                newX = screenW - frameSize.X.Offset
-            end
-            -- Top boundary
-            if newY < 0 then
-                newY = 0
-            end
-            -- Bottom boundary (screen height minus frame height)
-            if newY + frameSize.Y.Offset > screenH then
-                newY = screenH - frameSize.Y.Offset
-            end
+            -- Bounds checking - prevent going off screen
+            local maxX = parentScreen.AbsoluteSize.X - frame.AbsoluteSize.X
+            local maxY = parentScreen.AbsoluteSize.Y - frame.AbsoluteSize.Y
+            newX = math.clamp(newX, 0, maxX)
+            newY = math.clamp(newY, 0, maxY)
             
             frame.Position = UDim2.new(0, newX, 0, newY)
         end
     end)
-end
-
--- Create GUI (Key System - Main Key Entry)
-local GUI = Instance.new("Frame")
-GUI.Name = "GUI"
-GUI.Size = UDim2.new(0, 400, 0, 200)
-GUI.Position = UDim2.new(0.5, -200, 0.5, -100)
-GUI.BackgroundColor3 = Color3.fromRGB(30,30,40)
-GUI.BackgroundTransparency = 0.1
-GUI.BorderSizePixel = 0
-GUI.Visible = false
-GUI.Parent = ScreenGui
-applyBackground(GUI, BG_URL)
-
--- Title for GUI
-local titleGUI = Instance.new("TextLabel")
-titleGUI.Size = UDim2.new(1,0,0,40)
-titleGUI.Position = UDim2.new(0,0,0,0)
-titleGUI.BackgroundTransparency = 1
-titleGUI.Text = "LEModz | Key"
-titleGUI.TextColor3 = Color3.fromRGB(255,215,0)
-titleGUI.TextScaled = true
-titleGUI.Font = Enum.Font.GothamBold
-titleGUI.Parent = GUI
-
--- Key Entry Box
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(0, 250, 0, 40)
-keyBox.Position = UDim2.new(0.5, -125, 0.5, -20)
-keyBox.BackgroundColor3 = Color3.fromRGB(20,20,30)
-keyBox.TextColor3 = Color3.fromRGB(255,255,255)
-keyBox.PlaceholderText = "Enter Key"
-keyBox.PlaceholderColor3 = Color3.fromRGB(150,150,150)
-keyBox.Font = Enum.Font.Gotham
-keyBox.TextSize = 18
-keyBox.BorderSizePixel = 1
-keyBox.BorderColor3 = Color3.fromRGB(80,80,100)
-keyBox.Parent = GUI
-
--- Get Key Button (GUI)
-local getKeyBtn = Instance.new("TextButton")
-getKeyBtn.Size = UDim2.new(0, 100, 0, 40)
-getKeyBtn.Position = UDim2.new(0.5, -160, 0.8, -20)
-getKeyBtn.BackgroundColor3 = Color3.fromRGB(50,50,70)
-getKeyBtn.Text = "Get Key"
-getKeyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-getKeyBtn.Font = Enum.Font.GothamBold
-getKeyBtn.TextSize = 16
-getKeyBtn.Parent = GUI
-
--- Confirm Key Button
-local confirmBtn = Instance.new("TextButton")
-confirmBtn.Size = UDim2.new(0, 100, 0, 40)
-confirmBtn.Position = UDim2.new(0.5, 60, 0.8, -20)
-confirmBtn.BackgroundColor3 = Color3.fromRGB(0,120,0)
-confirmBtn.Text = "Confirm Key"
-confirmBtn.TextColor3 = Color3.fromRGB(255,255,255)
-confirmBtn.Font = Enum.Font.GothamBold
-confirmBtn.TextSize = 16
-confirmBtn.Parent = GUI
-
--- Create GUIGetKey (Link System)
-local GUIGetKey = Instance.new("Frame")
-GUIGetKey.Name = "GUIGetKey"
-GUIGetKey.Size = UDim2.new(0, 400, 0, 150)
-GUIGetKey.Position = UDim2.new(0.5, -200, 0.5, -75)
-GUIGetKey.BackgroundColor3 = Color3.fromRGB(30,30,40)
-GUIGetKey.BackgroundTransparency = 0.1
-GUIGetKey.BorderSizePixel = 0
-GUIGetKey.Visible = false
-GUIGetKey.Parent = ScreenGui
-applyBackground(GUIGetKey, BG_URL)
-
--- Title for GUIGetKey
-local titleGetKey = Instance.new("TextLabel")
-titleGetKey.Size = UDim2.new(1,0,0,40)
-titleGetKey.Position = UDim2.new(0,0,0,0)
-titleGetKey.BackgroundTransparency = 1
-titleGetKey.Text = "LEModz | Get Key"
-titleGetKey.TextColor3 = Color3.fromRGB(255,215,0)
-titleGetKey.TextScaled = true
-titleGetKey.Font = Enum.Font.GothamBold
-titleGetKey.Parent = GUIGetKey
-
--- Discord Link Text
-local discordLinkLabel = Instance.new("TextLabel")
-discordLinkLabel.Size = UDim2.new(1,0,0,40)
-discordLinkLabel.Position = UDim2.new(0,0,0.4,0)
-discordLinkLabel.BackgroundTransparency = 1
-discordLinkLabel.Text = "Free Key in Discord Link"
-discordLinkLabel.TextColor3 = Color3.fromRGB(200,200,255)
-discordLinkLabel.TextScaled = true
-discordLinkLabel.Font = Enum.Font.Gotham
-discordLinkLabel.Parent = GUIGetKey
-
--- Back to Enter Key Button
-local backBtn = Instance.new("TextButton")
-backBtn.Size = UDim2.new(0, 150, 0, 40)
-backBtn.Position = UDim2.new(0.5, -170, 0.8, -20)
-backBtn.BackgroundColor3 = Color3.fromRGB(70,70,90)
-backBtn.Text = "Back to Enter Key"
-backBtn.TextColor3 = Color3.fromRGB(255,255,255)
-backBtn.Font = Enum.Font.GothamBold
-backBtn.TextSize = 14
-backBtn.Parent = GUIGetKey
-
--- Discord Button
-local discordBtn = Instance.new("TextButton")
-discordBtn.Size = UDim2.new(0, 100, 0, 40)
-discordBtn.Position = UDim2.new(0.5, 70, 0.8, -20)
-discordBtn.BackgroundColor3 = Color3.fromRGB(88,101,242)
-discordBtn.Text = "Discord"
-discordBtn.TextColor3 = Color3.fromRGB(255,255,255)
-discordBtn.Font = Enum.Font.GothamBold
-discordBtn.TextSize = 16
-discordBtn.Parent = GUIGetKey
-
--- Create GUI2 (Main Panel)
-local GUI2 = Instance.new("Frame")
-GUI2.Name = "GUI2"
-GUI2.Size = UDim2.new(0, 650, 0, 500)
-GUI2.Position = UDim2.new(0.5, -325, 0.5, -250)
-GUI2.BackgroundColor3 = Color3.fromRGB(25,25,35)
-GUI2.BackgroundTransparency = 0.05
-GUI2.BorderSizePixel = 0
-GUI2.Visible = false
-GUI2.Parent = ScreenGui
-applyBackground(GUI2, BG_URL)
-
--- GUI2 Top Bar
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1,0,0,40)
-topBar.Position = UDim2.new(0,0,0,0)
-topBar.BackgroundColor3 = Color3.fromRGB(40,40,55)
-topBar.BackgroundTransparency = 0.2
-topBar.BorderSizePixel = 0
-topBar.Parent = GUI2
-
--- Menu Button
-local menuBtn = Instance.new("TextButton")
-menuBtn.Size = UDim2.new(0, 60, 1, 0)
-menuBtn.Position = UDim2.new(0,0,0,0)
-menuBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
-menuBtn.Text = "Menu"
-menuBtn.TextColor3 = Color3.fromRGB(255,255,255)
-menuBtn.Font = Enum.Font.GothamBold
-menuBtn.TextSize = 16
-menuBtn.Parent = topBar
-
--- Title for GUI2
-local titleGUI2 = Instance.new("TextLabel")
-titleGUI2.Size = UDim2.new(1, -180, 1, 0)
-titleGUI2.Position = UDim2.new(0,60,0,0)
-titleGUI2.BackgroundTransparency = 1
-titleGUI2.Text = "LEModz Panel"
-titleGUI2.TextColor3 = Color3.fromRGB(255,215,0)
-titleGUI2.TextScaled = true
-titleGUI2.Font = Enum.Font.GothamBold
-titleGUI2.Parent = topBar
-
--- Close Button (GUI2)
-local closeBtn2 = Instance.new("TextButton")
-closeBtn2.Size = UDim2.new(0, 60, 1, 0)
-closeBtn2.Position = UDim2.new(1, -60, 0, 0)
-closeBtn2.BackgroundColor3 = Color3.fromRGB(150,50,50)
-closeBtn2.Text = "Close"
-closeBtn2.TextColor3 = Color3.fromRGB(255,255,255)
-closeBtn2.Font = Enum.Font.GothamBold
-closeBtn2.TextSize = 16
-closeBtn2.Parent = topBar
-
--- ========== COUNTDOWN BOX (CB1) ==========
-local countdownBox = Instance.new("Frame")
-countdownBox.Name = "CountdownBox"
-countdownBox.Size = UDim2.new(0, 200, 0, 80)
-countdownBox.Position = UDim2.new(1, -210, 0, 50)
-countdownBox.BackgroundColor3 = Color3.fromRGB(20,20,35)
-countdownBox.BackgroundTransparency = 0.2
-countdownBox.BorderSizePixel = 1
-countdownBox.BorderColor3 = Color3.fromRGB(255,215,0)
-countdownBox.Parent = GUI2
-
--- Countdown Box Title
-local cbTitle = Instance.new("TextLabel")
-cbTitle.Size = UDim2.new(1,0,0,25)
-cbTitle.Position = UDim2.new(0,0,0,0)
-cbTitle.BackgroundTransparency = 1
-cbTitle.Text = "⏱ KEY TIMER"
-cbTitle.TextColor3 = Color3.fromRGB(255,215,0)
-cbTitle.TextScaled = true
-cbTitle.Font = Enum.Font.GothamBold
-cbTitle.Parent = countdownBox
-
--- Countdown Display (H:M:S)
-local countdownDisplay = Instance.new("TextLabel")
-countdownDisplay.Size = UDim2.new(1,0,0,45)
-countdownDisplay.Position = UDim2.new(0,0,0,28)
-countdownDisplay.BackgroundTransparency = 1
-countdownDisplay.Text = "24:00:00"
-countdownDisplay.TextColor3 = Color3.fromRGB(255,255,255)
-countdownDisplay.TextScaled = true
-countdownDisplay.Font = Enum.Font.GothamBold
-countdownDisplay.TextSize = 24
-countdownDisplay.Parent = countdownBox
-
--- UTC Time Display
-local utcDisplay = Instance.new("TextLabel")
-utcDisplay.Size = UDim2.new(0, 200, 0, 25)
-utcDisplay.Position = UDim2.new(1, -210, 0, 135)
-utcDisplay.BackgroundTransparency = 1
-utcDisplay.Text = "UTC: --:--:--"
-utcDisplay.TextColor3 = Color3.fromRGB(180,180,200)
-utcDisplay.TextScaled = true
-utcDisplay.Font = Enum.Font.Gotham
-utcDisplay.Parent = GUI2
-
--- Menu Panel (hidden by default)
-local menuPanel = Instance.new("Frame")
-menuPanel.Size = UDim2.new(0, 200, 1, -40)
-menuPanel.Position = UDim2.new(0,0,0,40)
-menuPanel.BackgroundColor3 = Color3.fromRGB(35,35,50)
-menuPanel.BackgroundTransparency = 0.3
-menuPanel.BorderSizePixel = 0
-menuPanel.Visible = false
-menuPanel.Parent = GUI2
-
--- Menu Items container
-local menuItems = Instance.new("ScrollingFrame")
-menuItems.Size = UDim2.new(1,0,1,0)
-menuItems.Position = UDim2.new(0,0,0,0)
-menuItems.BackgroundTransparency = 1
-menuItems.BorderSizePixel = 0
-menuItems.CanvasSize = UDim2.new(0,0,0,300)
-menuItems.Parent = menuPanel
-
--- Main Content Area (for scripts/features)
-local contentArea = Instance.new("Frame")
-contentArea.Size = UDim2.new(1, -200, 1, -40)
-contentArea.Position = UDim2.new(0,0,0,40)
-contentArea.BackgroundColor3 = Color3.fromRGB(30,30,45)
-contentArea.BackgroundTransparency = 0.2
-contentArea.BorderSizePixel = 0
-contentArea.Parent = GUI2
-
--- Add sample menu items
-local sampleItems = {"Feature 1", "Feature 2", "Feature 3", "Feature 4", "Settings"}
-for i, itemName in ipairs(sampleItems) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 40)
-    btn.Position = UDim2.new(0,5,0,(i-1)*45)
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,70)
-    btn.Text = itemName
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 16
-    btn.Parent = menuItems
     
-    btn.MouseButton1Click:Connect(function()
-        titleGUI2.Text = "LEModz | " .. itemName
-        for _, child in ipairs(contentArea:GetChildren()) do
-            if child:IsA("TextLabel") then
-                child:Destroy()
-            end
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
         end
-        local contentLabel = Instance.new("TextLabel")
-        contentLabel.Size = UDim2.new(1,0,1,0)
-        contentLabel.BackgroundTransparency = 1
-        contentLabel.Text = "Content for " .. itemName .. "\n\nPlace your script features here!"
-        contentLabel.TextColor3 = Color3.fromRGB(255,255,255)
-        contentLabel.TextScaled = true
-        contentLabel.Font = Enum.Font.Gotham
-        contentLabel.Parent = contentArea
     end)
 end
 
--- Create Image Button (toggle to open GUI)
-local imgButton = Instance.new("ImageButton")
-imgButton.Name = "ImgButton"
-imgButton.Size = UDim2.new(0, 80, 0, 80)
-imgButton.Position = UDim2.new(0.02, 0, 0.85, 0)
-imgButton.BackgroundTransparency = 1
-imgButton.Image = IMG_BUTTON_URL
-imgButton.Parent = ScreenGui
-
--- Apply draggable with bounds to all GUI elements
-makeDraggableWithBounds(GUI, titleGUI, GUI.Size)
-makeDraggableWithBounds(GUIGetKey, titleGetKey, GUIGetKey.Size)
-makeDraggableWithBounds(GUI2, topBar, GUI2.Size)
-makeDraggableWithBounds(imgButton, imgButton, imgButton.Size)
-
--- Logic State Management
-local currentState = "L1"
-local countdownEnd = nil
-local countdownActive = false
-
--- Format time from seconds to HH:MM:SS
-local function formatTime(seconds)
-    local hours = math.floor(seconds / 3600)
-    local minutes = math.floor((seconds % 3600) / 60)
-    local secs = seconds % 60
-    return string.format("%02d:%02d:%02d", hours, minutes, secs)
-end
-
--- Update UTC Clock Display
-local function updateUTCDisplay()
-    local utcTime = os.date("!%H:%M:%S")
-    utcDisplay.Text = "🌐 UTC: " .. utcTime
-end
-
--- Update Countdown Display (L3 Timer)
-local function updateCountdownDisplay()
-    if countdownActive and countdownEnd then
-        local remaining = countdownEnd - os.time()
-        if remaining <= 0 then
-            countdownActive = false
-            keyConfirmed = false
-            savedKey = nil
-            keyExpiry = nil
-            countdownStartTime = nil
-            countdownDisplay.Text = "00:00:00"
-            currentState = "L1"
-            imgButton.Visible = true
-            GUI.Visible = false
-            GUIGetKey.Visible = false
-            GUI2.Visible = false
-        else
-            countdownDisplay.Text = formatTime(remaining)
-        end
-    else
-        countdownDisplay.Text = "00:00:00"
+-- Function to fetch key from raw URL
+local function fetchValidKey()
+    local success, data = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/LEDeveloper-web/LEScript-Key/refs/heads/main/KEY")
+    end)
+    if success then
+        return data:gsub("%s+", "")
     end
+    return nil
 end
 
--- Start the 24-hour countdown (L3)
-local function startL3Countdown()
-    countdownEnd = os.time() + (24 * 60 * 60)
-    countdownActive = true
-    countdownStartTime = os.time()
-    
-    if syn and syn.crypt and writefile then
-        local data = {
-            key = savedKey or "valid_key",
-            expiry = countdownEnd,
-            startTime = countdownStartTime
-        }
-        local success, encrypted = pcall(function()
-            return syn.crypt.encrypt(HttpService:JSONEncode(data))
-        end)
-        if success and encrypted then
-            writefile("LEModz_Key.txt", encrypted)
-        end
-    end
-end
+-- ================================
+-- CREATE MAIN GUI
+-- ================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LEModzMainGUI"
+screenGui.Parent = Player.PlayerGui
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.ResetOnSpawn = false
 
--- Check if key is valid from GitHub
-local function isKeyValidFromGitHub(key)
-    if not next(validKeys) then
-        fetchValidKeys()
-    end
-    return validKeys[key] == true
-end
+-- Background Image (loaded from Dropbox)
+local bgImageLabel = Instance.new("ImageLabel")
+bgImageLabel.Name = "BackgroundImage"
+bgImageLabel.Size = UDim2.new(1, 0, 1, 0)
+bgImageLabel.BackgroundTransparency = 1
+bgImageLabel.Image = "https://www.dropbox.com/scl/fi/c4wq3ddady4yamawm2apg/LEModz_Background.jpeg?rlkey=czewj8x20qdjmar7hcrw977x3&st=dont9vp4&dl=1"
+bgImageLabel.ScaleType = Enum.ScaleType.Crop
+bgImageLabel.Parent = screenGui
 
--- Timer update thread (real-time, runs every second)
-spawn(function()
-    while true do
-        wait(1)
-        updateUTCDisplay()
-        updateCountdownDisplay()
-        
-        if countdownActive and countdownEnd and os.time() >= countdownEnd then
-            countdownActive = false
-            keyConfirmed = false
-            savedKey = nil
-            keyExpiry = nil
-            countdownStartTime = nil
-            currentState = "L1"
-            imgButton.Visible = true
-            GUI.Visible = false
-            GUIGetKey.Visible = false
-            GUI2.Visible = false
-        end
-    end
-end)
+-- ================================
+-- FRAME1: ButtonSystem
+-- ================================
+local frame1 = Instance.new("Frame")
+frame1.Name = "ButtonSystem"
+frame1.Size = UDim2.new(0, 350, 0, 500)
+frame1.Position = UDim2.new(0.5, -175, 0.5, -250)
+frame1.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+frame1.BackgroundTransparency = 0.15
+frame1.BorderSizePixel = 0
+frame1.Visible = true
+frame1.Parent = screenGui
 
--- Button Functionality
+local frame1Corner = Instance.new("UICorner")
+frame1Corner.CornerRadius = UDim.new(0, 12)
+frame1Corner.Parent = frame1
 
-local function setStateL1()
-    imgButton.Visible = true
-    GUI.Visible = false
-    GUIGetKey.Visible = false
-    GUI2.Visible = false
-    currentState = "L1"
-end
+-- Shape Frame1 (Square)
+local shapeFrame1 = Instance.new("Frame")
+shapeFrame1.Size = UDim2.new(0, 300, 0, 300)
+shapeFrame1.Position = UDim2.new(0.5, -150, 0.5, -150)
+shapeFrame1.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+shapeFrame1.BackgroundTransparency = 0.3
+shapeFrame1.BorderSizePixel = 2
+shapeFrame1.BorderColor3 = Color3.fromRGB(255, 100, 100)
+shapeFrame1.Parent = frame1
 
-local function setStateGUI()
-    imgButton.Visible = false
-    GUI.Visible = true
-    GUIGetKey.Visible = false
-    GUI2.Visible = false
-    currentState = "GUI"
-end
+local shapeCorner = Instance.new("UICorner")
+shapeCorner.CornerRadius = UDim.new(0, 8)
+shapeCorner.Parent = shapeFrame1
 
-local function setStateGUIGetKey()
-    imgButton.Visible = false
-    GUI.Visible = false
-    GUIGetKey.Visible = true
-    GUI2.Visible = false
-    currentState = "GUIGetKey"
-end
+-- Image inside Frame1
+local buttonImage = Instance.new("ImageLabel")
+buttonImage.Size = UDim2.new(0, 200, 0, 200)
+buttonImage.Position = UDim2.new(0.5, -100, 0.5, -100)
+buttonImage.BackgroundTransparency = 1
+buttonImage.Image = "https://www.dropbox.com/scl/fi/777yhr2rb2kz0q2ms9td3/LEModz_Img_Button.jpg?rlkey=2ru00hr721mxepl347rbfmwok&st=zddam1ge&dl=1"
+buttonImage.Parent = shapeFrame1
 
-local function setStateL2()
-    imgButton.Visible = true
-    GUI.Visible = false
-    GUIGetKey.Visible = false
-    GUI2.Visible = false
-    currentState = "L2"
-end
+-- Shape Button (Rectangle) - Transparent button with text
+local shapeButton = Instance.new("TextButton")
+shapeButton.Size = UDim2.new(0, 200, 0, 50)
+shapeButton.Position = UDim2.new(0.5, -100, 1, -60)
+shapeButton.BackgroundTransparency = 1
+shapeButton.Text = "OPEN"
+shapeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+shapeButton.TextSize = 20
+shapeButton.Font = Enum.Font.GothamBold
+shapeButton.BorderSizePixel = 0
+shapeButton.Parent = shapeFrame1
 
-local function setStateGUI2()
-    if countdownActive then
-        imgButton.Visible = false
-        GUI.Visible = false
-        GUIGetKey.Visible = false
-        GUI2.Visible = true
-        currentState = "L3"
-        if countdownEnd then
-            local remaining = countdownEnd - os.time()
-            titleGUI2.Text = "LEModz | " .. formatTime(remaining) .. " Remaining"
-        end
-    else
-        setStateL1()
-    end
-end
+-- ================================
+-- FRAME2: KeySystem
+-- ================================
+local frame2 = Instance.new("Frame")
+frame2.Name = "KeySystem"
+frame2.Size = UDim2.new(0, 350, 0, 250)
+frame2.Position = UDim2.new(0.5, -175, 0.5, -125)
+frame2.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+frame2.BackgroundTransparency = 0.15
+frame2.BorderSizePixel = 0
+frame2.Visible = false
+frame2.Parent = screenGui
 
--- Image Button Click
-imgButton.MouseButton1Click:Connect(function()
-    if countdownActive then
-        setStateGUI2()
-    else
-        setStateGUI()
-    end
-end)
+local frame2Corner = Instance.new("UICorner")
+frame2Corner.CornerRadius = UDim.new(0, 12)
+frame2Corner.Parent = frame2
+
+-- Title
+local title2 = Instance.new("TextLabel")
+title2.Size = UDim2.new(1, 0, 0, 40)
+title2.Position = UDim2.new(0, 0, 0, 0)
+title2.BackgroundTransparency = 1
+title2.Text = "LEModz | Key"
+title2.TextColor3 = Color3.fromRGB(255, 200, 100)
+title2.TextSize = 18
+title2.Font = Enum.Font.GothamBold
+title2.Parent = frame2
+
+-- Key Input Box
+local keyInput = Instance.new("TextBox")
+keyInput.Size = UDim2.new(0, 250, 0, 40)
+keyInput.Position = UDim2.new(0.5, -125, 0.5, -60)
+keyInput.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+keyInput.Text = ""
+keyInput.PlaceholderText = "Enter Key"
+keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyInput.Font = Enum.Font.Gotham
+keyInput.TextSize = 14
+keyInput.Parent = frame2
+
+local keyInputCorner = Instance.new("UICorner")
+keyInputCorner.CornerRadius = UDim.new(0, 6)
+keyInputCorner.Parent = keyInput
 
 -- Get Key Button
-getKeyBtn.MouseButton1Click:Connect(function()
-    setStateGUIGetKey()
-end)
+local getKeyBtn = Instance.new("TextButton")
+getKeyBtn.Size = UDim2.new(0, 100, 0, 35)
+getKeyBtn.Position = UDim2.new(0.2, -50, 0.7, 0)
+getKeyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+getKeyBtn.Text = "Get Key"
+getKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+getKeyBtn.Font = Enum.Font.Gotham
+getKeyBtn.TextSize = 14
+getKeyBtn.Parent = frame2
 
--- Back Button
-backBtn.MouseButton1Click:Connect(function()
-    setStateGUI()
-end)
+local getKeyCorner = Instance.new("UICorner")
+getKeyCorner.CornerRadius = UDim.new(0, 6)
+getKeyCorner.Parent = getKeyBtn
 
--- Discord Button - Copy link and show notification (GUIN2)
-discordBtn.MouseButton1Click:Connect(function()
-    setclipboard and setclipboard(DISCORD_INVITE)
-    createNotification("🔗 Discord Link", "Discord Link Copied! Join Discord Server Now, the Key is Waiting!", 4)
-    if syn and syn.request then
-        syn.request({
-            Url = DISCORD_INVITE,
-            Method = "GET"
-        })
+-- Confirm Key Button
+local confirmKeyBtn = Instance.new("TextButton")
+confirmKeyBtn.Size = UDim2.new(0, 100, 0, 35)
+confirmKeyBtn.Position = UDim2.new(0.8, -50, 0.7, 0)
+confirmKeyBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+confirmKeyBtn.Text = "Confirm Key"
+confirmKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+confirmKeyBtn.Font = Enum.Font.Gotham
+confirmKeyBtn.TextSize = 14
+confirmKeyBtn.Parent = frame2
+
+local confirmKeyCorner = Instance.new("UICorner")
+confirmKeyCorner.CornerRadius = UDim.new(0, 6)
+confirmKeyCorner.Parent = confirmKeyBtn
+
+-- ================================
+-- FRAME3: GetKey Frame
+-- ================================
+local frame3 = Instance.new("Frame")
+frame3.Name = "GetKeyFrame"
+frame3.Size = UDim2.new(0, 350, 0, 200)
+frame3.Position = UDim2.new(0.5, -175, 0.5, -100)
+frame3.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+frame3.BackgroundTransparency = 0.15
+frame3.BorderSizePixel = 0
+frame3.Visible = false
+frame3.Parent = screenGui
+
+local frame3Corner = Instance.new("UICorner")
+frame3Corner.CornerRadius = UDim.new(0, 12)
+frame3Corner.Parent = frame3
+
+local title3 = Instance.new("TextLabel")
+title3.Size = UDim2.new(1, 0, 0, 40)
+title3.Position = UDim2.new(0, 0, 0, 0)
+title3.BackgroundTransparency = 1
+title3.Text = "LEModz | Get Key"
+title3.TextColor3 = Color3.fromRGB(255, 200, 100)
+title3.TextSize = 18
+title3.Font = Enum.Font.GothamBold
+title3.Parent = frame3
+
+local infoText = Instance.new("TextLabel")
+infoText.Size = UDim2.new(1, -40, 0, 40)
+infoText.Position = UDim2.new(0, 20, 0.4, 0)
+infoText.BackgroundTransparency = 1
+infoText.Text = "Free Key in Discord Link"
+infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
+infoText.TextSize = 14
+infoText.Font = Enum.Font.Gotham
+infoText.Parent = frame3
+
+-- Back to Enter Key Button
+local backToKeyBtn = Instance.new("TextButton")
+backToKeyBtn.Size = UDim2.new(0, 130, 0, 35)
+backToKeyBtn.Position = UDim2.new(0.25, -65, 0.7, 0)
+backToKeyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+backToKeyBtn.Text = "Back to Enter Key"
+backToKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+backToKeyBtn.Font = Enum.Font.Gotham
+backToKeyBtn.TextSize = 12
+backToKeyBtn.Parent = frame3
+
+local backCorner = Instance.new("UICorner")
+backCorner.CornerRadius = UDim.new(0, 6)
+backCorner.Parent = backToKeyBtn
+
+-- Discord Button
+local discordBtn = Instance.new("TextButton")
+discordBtn.Size = UDim2.new(0, 130, 0, 35)
+discordBtn.Position = UDim2.new(0.75, -65, 0.7, 0)
+discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+discordBtn.Text = "Discord"
+discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+discordBtn.Font = Enum.Font.Gotham
+discordBtn.TextSize = 14
+discordBtn.Parent = frame3
+
+local discordCorner = Instance.new("UICorner")
+discordCorner.CornerRadius = UDim.new(0, 6)
+discordCorner.Parent = discordBtn
+
+-- ================================
+-- FRAME4: SystemPanel
+-- ================================
+local frame4 = Instance.new("Frame")
+frame4.Name = "SystemPanel"
+frame4.Size = UDim2.new(0, 500, 0, 400)
+frame4.Position = UDim2.new(0.5, -250, 0.5, -200)
+frame4.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+frame4.BackgroundTransparency = 0.15
+frame4.BorderSizePixel = 0
+frame4.Visible = false
+frame4.Parent = screenGui
+
+local frame4Corner = Instance.new("UICorner")
+frame4Corner.CornerRadius = UDim.new(0, 12)
+frame4Corner.Parent = frame4
+
+-- Title Bar with Menu Button and Close Button
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+titleBar.BackgroundTransparency = 0.5
+titleBar.BorderSizePixel = 0
+titleBar.Parent = frame4
+
+local titleBarCorner = Instance.new("UICorner")
+titleBarCorner.CornerRadius = UDim.new(0, 12)
+titleBarCorner.Parent = titleBar
+
+-- Menu Button (opens/closes menu sidebar)
+local menuBtn = Instance.new("TextButton")
+menuBtn.Size = UDim2.new(0, 60, 0, 30)
+menuBtn.Position = UDim2.new(0, 10, 0.5, -15)
+menuBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+menuBtn.Text = "Menu"
+menuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+menuBtn.Font = Enum.Font.Gotham
+menuBtn.TextSize = 14
+menuBtn.Parent = titleBar
+
+local menuBtnCorner = Instance.new("UICorner")
+menuBtnCorner.CornerRadius = UDim.new(0, 6)
+menuBtnCorner.Parent = menuBtn
+
+-- Title Label
+local title4 = Instance.new("TextLabel")
+title4.Size = UDim2.new(0, 200, 1, 0)
+title4.Position = UDim2.new(0.5, -100, 0, 0)
+title4.BackgroundTransparency = 1
+title4.Text = "LEModz System"
+title4.TextColor3 = Color3.fromRGB(255, 200, 100)
+title4.TextSize = 18
+title4.Font = Enum.Font.GothamBold
+title4.Parent = titleBar
+
+-- Close Button (Close3 logic)
+local closeBtn4 = Instance.new("TextButton")
+closeBtn4.Size = UDim2.new(0, 60, 0, 30)
+closeBtn4.Position = UDim2.new(1, -70, 0.5, -15)
+closeBtn4.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeBtn4.Text = "Close"
+closeBtn4.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn4.Font = Enum.Font.Gotham
+closeBtn4.TextSize = 14
+closeBtn4.Parent = titleBar
+
+local closeBtnCorner = Instance.new("UICorner")
+closeBtnCorner.CornerRadius = UDim.new(0, 6)
+closeBtnCorner.Parent = closeBtn4
+
+-- Menu Sidebar (hidden by default)
+local menuSidebar = Instance.new("Frame")
+menuSidebar.Size = UDim2.new(0, 150, 1, -40)
+menuSidebar.Position = UDim2.new(-151, 0, 0, 40)
+menuSidebar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+menuSidebar.BackgroundTransparency = 0.2
+menuSidebar.BorderSizePixel = 0
+menuSidebar.Visible = false
+menuSidebar.Parent = frame4
+
+local sidebarCorner = Instance.new("UICorner")
+sidebarCorner.CornerRadius = UDim.new(0, 8)
+sidebarCorner.Parent = menuSidebar
+
+-- Menu items (placeholder for future features)
+local menuItem1 = Instance.new("TextLabel")
+menuItem1.Size = UDim2.new(1, 0, 0, 40)
+menuItem1.Position = UDim2.new(0, 0, 0, 10)
+menuItem1.BackgroundTransparency = 1
+menuItem1.Text = "Options"
+menuItem1.TextColor3 = Color3.fromRGB(220, 220, 220)
+menuItem1.Font = Enum.Font.Gotham
+menuItem1.TextSize = 16
+menuItem1.Parent = menuSidebar
+
+-- Countdown Box (CB1)
+local countdownBox = Instance.new("Frame")
+countdownBox.Size = UDim2.new(0, 300, 0, 100)
+countdownBox.Position = UDim2.new(0.5, -150, 0.5, -50)
+countdownBox.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+countdownBox.BackgroundTransparency = 0.3
+countdownBox.BorderSizePixel = 0
+countdownBox.Parent = frame4
+
+local countdownCorner = Instance.new("UICorner")
+countdownCorner.CornerRadius = UDim.new(0, 8)
+countdownCorner.Parent = countdownBox
+
+local timerLabel = Instance.new("TextLabel")
+timerLabel.Size = UDim2.new(1, 0, 1, 0)
+timerLabel.BackgroundTransparency = 1
+timerLabel.Text = "24H 0M 0S"
+timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+timerLabel.TextSize = 28
+timerLabel.Font = Enum.Font.GothamBold
+timerLabel.Parent = countdownBox
+
+-- ================================
+-- DRAG FUNCTIONALITY FOR ALL FRAMES
+-- ================================
+makeDraggable(frame1, screenGui)
+makeDraggable(frame2, screenGui)
+makeDraggable(frame3, screenGui)
+makeDraggable(frame4, screenGui)
+
+-- ================================
+-- LOGIC STATE
+-- ================================
+local currentState = "L1_Close" -- L1_Close, L1_Open, L2_Close3, L2_Open3
+local countdownEndTime = nil
+local countdownActive = false
+local countdownConnection = nil
+local keyValidated = false
+
+-- Timer update function (L3)
+local function updateTimerDisplay()
+    if not countdownActive or not countdownEndTime then
+        timerLabel.Text = "00H 00M 00S"
+        return
     end
-end)
-
--- Confirm Key Button - Validate from GitHub URL
-confirmBtn.MouseButton1Click:Connect(function()
-    local enteredKey = keyBox.Text
-    if isKeyValidFromGitHub(enteredKey) then
-        savedKey = enteredKey
-        startL3Countdown()
-        keyConfirmed = true
-        setStateL2()
-        -- GUIN3: Notify after key confirmation
-        createNotification("✅ Key Confirmed", "Key has been Confirmed! Key Countdown: 24 Hours", 5)
+    
+    local remaining = countdownEndTime - os.time()
+    if remaining <= 0 then
+        -- Timer ended, go back to L1 logic
+        countdownActive = false
+        if countdownConnection then
+            countdownConnection:Disconnect()
+            countdownConnection = nil
+        end
+        timerLabel.Text = "00H 00M 00S"
+        -- Reset to L1 Close state
+        currentState = "L1_Close"
+        frame1.Visible = true
+        frame2.Visible = false
+        frame3.Visible = false
+        frame4.Visible = false
+        notify("Timer Ended", "Your key has expired. Please re-enter a new key.", 5)
     else
-        keyBox.PlaceholderText = "Invalid Key!"
-        keyBox.PlaceholderColor3 = Color3.fromRGB(255,100,100)
-        wait(2)
-        keyBox.PlaceholderText = "Enter Key"
-        keyBox.PlaceholderColor3 = Color3.fromRGB(150,150,150)
+        local hours = math.floor(remaining / 3600)
+        local minutes = math.floor((remaining % 3600) / 60)
+        local seconds = remaining % 60
+        timerLabel.Text = string.format("%02dH %02dM %02dS", hours, minutes, seconds)
+    end
+end
+
+local function startCountdown(durationSeconds)
+    countdownEndTime = os.time() + durationSeconds
+    countdownActive = true
+    
+    if countdownConnection then
+        countdownConnection:Disconnect()
+    end
+    
+    -- Real-time timer update (L3)
+    countdownConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        updateTimerDisplay()
+    end)
+    updateTimerDisplay()
+end
+
+-- ================================
+-- BUTTON FUNCTIONALITY
+-- ================================
+
+-- Frame1: OPEN button (goes to L1_Open)
+shapeButton.MouseButton1Click:Connect(function()
+    if currentState == "L1_Close" then
+        currentState = "L1_Open"
+        frame1.Visible = false
+        frame2.Visible = true
+        frame3.Visible = false
+        frame4.Visible = false
     end
 end)
 
--- GUI2 Menu Button Toggle
+-- Frame2: Get Key button (goes to Frame3)
+getKeyBtn.MouseButton1Click:Connect(function()
+    frame2.Visible = false
+    frame3.Visible = true
+    frame1.Visible = false
+    frame4.Visible = false
+end)
+
+-- Frame2: Confirm Key button
+confirmKeyBtn.MouseButton1Click:Connect(function()
+    local enteredKey = keyInput.Text:gsub("%s+", "")
+    local validKey = fetchValidKey()
+    
+    if validKey and enteredKey == validKey then
+        keyValidated = true
+        -- Start 24-hour countdown (L3)
+        startCountdown(24 * 60 * 60)
+        -- Notify Frame5-C
+        notify("Key Confirmed", "Key has been Confirmed, Key Countdown in 24H", 5)
+        -- Go to L2 Close3 (Frame1 visible)
+        currentState = "L2_Close3"
+        frame1.Visible = true
+        frame2.Visible = false
+        frame3.Visible = false
+        frame4.Visible = false
+    else
+        notify("Invalid Key", "The key you entered is invalid. Please get a valid key from Discord.", 4)
+    end
+end)
+
+-- Frame3: Back button
+backToKeyBtn.MouseButton1Click:Connect(function()
+    frame3.Visible = false
+    frame2.Visible = true
+end)
+
+-- Frame3: Discord button (copies link)
+discordBtn.MouseButton1Click:Connect(function()
+    local discordLink = "https://discord.gg/NBdp4zuJtt"
+    if Clipboard then
+        Clipboard(discordLink)
+        notify("Discord Link Copied", "Discord Link Copied, Join Discord Server Now, the Key is Waiting", 5) -- Frame5-B
+    else
+        notify("Copy Failed", "Your executor does not support clipboard copying. Link: " .. discordLink, 8)
+    end
+end)
+
+-- Frame4: Close button (Close3 logic - goes back to Frame1)
+closeBtn4.MouseButton1Click:Connect(function()
+    if currentState == "L2_Open3" then
+        currentState = "L2_Close3"
+        frame4.Visible = false
+        frame1.Visible = true
+        frame2.Visible = false
+        frame3.Visible = false
+    end
+end)
+
+-- Frame4: Menu button (opens/closes sidebar)
 local menuOpen = false
 menuBtn.MouseButton1Click:Connect(function()
     menuOpen = not menuOpen
-    menuPanel.Visible = menuOpen
+    menuSidebar.Visible = menuOpen
     if menuOpen then
-        contentArea.Size = UDim2.new(1, -200, 1, -40)
-        contentArea.Position = UDim2.new(0,200,0,40)
+        menuSidebar:TweenPosition(UDim2.new(0, 0, 0, 40), "Out", "Quad", 0.3, true)
     else
-        contentArea.Size = UDim2.new(1,0,1,-40)
-        contentArea.Position = UDim2.new(0,0,0,40)
+        menuSidebar:TweenPosition(UDim2.new(-151, 0, 0, 40), "Out", "Quad", 0.3, true)
+        task.wait(0.3)
+        menuSidebar.Visible = false
     end
 end)
 
--- Close Button for GUI2
-closeBtn2.MouseButton1Click:Connect(function()
-    setStateL1()
-end)
-
--- Update timer display in GUI2 title when visible
-spawn(function()
-    while true do
-        wait(0.5)
-        if GUI2.Visible and countdownActive and countdownEnd then
-            local remaining = countdownEnd - os.time()
-            if remaining > 0 then
-                titleGUI2.Text = "LEModz | " .. formatTime(remaining)
-            else
-                titleGUI2.Text = "LEModz | EXPIRED"
-            end
-        end
+-- Frame1 button from L2 (when key is validated, button on Frame1 goes to Frame4)
+-- Override shapeButton behavior when in L2 state
+local originalClick = shapeButton.MouseButton1Click
+shapeButton.MouseButton1Click:Connect(function()
+    if currentState == "L2_Close3" and keyValidated then
+        currentState = "L2_Open3"
+        frame1.Visible = false
+        frame4.Visible = true
+        frame2.Visible = false
+        frame3.Visible = false
+    elseif currentState == "L1_Close" then
+        currentState = "L1_Open"
+        frame1.Visible = false
+        frame2.Visible = true
+        frame3.Visible = false
+        frame4.Visible = false
     end
 end)
 
--- Fetch valid keys on startup
-fetchValidKeys()
+-- ================================
+-- NOTIFY SCRIPT LOADED (Frame5-A)
+-- ================================
+notify("LEModz Loaded", "Loadstring Script Loaded Successfully!", 4)
 
--- Load saved key data
-loadKeyData()
+-- ================================
+-- INITIAL STATE: L1_Close
+-- ================================
+currentState = "L1_Close"
+frame1.Visible = true
+frame2.Visible = false
+frame3.Visible = false
+frame4.Visible = false
 
--- Restore countdown if key was valid
-if savedKey and keyExpiry and os.time() < keyExpiry then
-    countdownEnd = keyExpiry
-    countdownActive = true
-    keyConfirmed = true
-    countdownStartTime = keyExpiry - (24 * 3600)
-    setStateL2()
-end
+-- Clean up on player leaving (optional)
+Player:OnTeleport(function()
+    screenGui:Destroy()
+end)
 
--- Initial state
-setStateL1()
-
-print("LEModz Key System Loaded Successfully!")
-print("UTC Time: " .. os.date("!%Y-%m-%d %H:%M:%S"))
+-- ================================
+-- RETURN THE GUI FOR LOADSTRING
+-- ================================
+return screenGui
