@@ -10,7 +10,7 @@
     - Notification system
     
     To use as a loadstring:
-    loadstring(game:HttpGet("https://pastebin.com/raw/your_paste_id"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/LEDeveloper-web/LEScript/refs/heads/main/LE%20Basic%20Script.lua"))()
 --]]
 
 -- ================================
