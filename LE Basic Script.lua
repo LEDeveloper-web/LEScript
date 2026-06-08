@@ -3,14 +3,21 @@
     Instructions:
     This script creates a fully functional GUI with:
     - Button System (Image + Transparent Button)
-    - Key System with online validation
+    - Key System with online validation (one-time key per user per day)
     - Discord link copying
     - 24-hour countdown timer
     - Draggable frames (with screen bounds)
     - Notification system
     
+    Key Management:
+    - Keys are stored on GitHub as a list
+    - Each key can only be used once per user
+    - When a key is used, it gets marked as used for that user
+    - Next day, the GitHub repo owner can change the key list
+    - Users can request a new key from Discord daily
+    
     To use as a loadstring:
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/LEDeveloper-web/LEScript/refs/heads/main/LE%20Basic%20Script.lua"))()
+    loadstring(game:HttpGet("https://pastebin.com/raw/your_paste_id"))()
 --]]
 
 -- ================================
@@ -27,11 +34,38 @@ local TweenService = game:GetService("TweenService")
 -- Check if running on mobile
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
+-- Storage for used keys (persists across script reloads)
+local usedKeysStore = {}
+local USER_DATA_KEY = "LEModz_UsedKeys_" .. Player.UserId
+
+-- Load previously used keys from data store
+local function loadUsedKeys()
+    local success, data = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(readfile and readfile(USER_DATA_KEY) or "{}")
+    end)
+    if success and type(data) == "table" then
+        usedKeysStore = data
+    else
+        usedKeysStore = {}
+    end
+end
+
+-- Save used keys to data store
+local function saveUsedKeys()
+    pcall(function()
+        if writefile then
+            writefile(USER_DATA_KEY, game:GetService("HttpService"):JSONEncode(usedKeysStore))
+        end
+    end)
+end
+
+loadUsedKeys()
+
 -- ================================
 -- UTILITY FUNCTIONS
 -- ================================
 local function notify(title, text, duration)
-    -- Frame5 Notifier System (Frame5)
+    -- Frame5 Notifier System
     local notificationHolder = Player.PlayerGui:FindFirstChild("LEModzNotifications") or Instance.new("ScreenGui")
     if not notificationHolder.Parent then
         notificationHolder.Name = "LEModzNotifications"
@@ -47,12 +81,10 @@ local function notify(title, text, duration)
     frame.BackgroundTransparency = 0.1
     frame.ClipsDescendants = true
     
-    -- Corner rounding
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
-    -- Title
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, 0, 0, 25)
     titleLabel.Position = UDim2.new(0, 10, 0, 5)
@@ -64,7 +96,6 @@ local function notify(title, text, duration)
     titleLabel.TextSize = 14
     titleLabel.Parent = frame
     
-    -- Message
     local msgLabel = Instance.new("TextLabel")
     msgLabel.Size = UDim2.new(1, -20, 0, 30)
     msgLabel.Position = UDim2.new(0, 10, 0, 30)
@@ -78,7 +109,6 @@ local function notify(title, text, duration)
     msgLabel.TextWrapped = true
     msgLabel.Parent = frame
     
-    -- Progress bar (timeout)
     local progress = Instance.new("Frame")
     progress.Size = UDim2.new(1, 0, 0, 3)
     progress.Position = UDim2.new(0, 0, 1, -3)
@@ -86,24 +116,20 @@ local function notify(title, text, duration)
     progress.BorderSizePixel = 0
     progress.Parent = frame
     
-    -- Stack notifications
     local existing = notificationHolder:GetChildren()
     local yOffset = (#existing * 70) + 10
     frame.Position = UDim2.new(0.5, -150, 0, yOffset)
     
     frame.Parent = notificationHolder
     
-    -- Animate in
     frame.BackgroundTransparency = 1
     frame.Position = UDim2.new(0.5, -150, 0, yOffset - 20)
     local tweenIn = TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.1, Position = UDim2.new(0.5, -150, 0, yOffset)})
     tweenIn:Play()
     
-    -- Animate progress bar
     local tweenProgress = TweenService:Create(progress, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 0, 3)})
     tweenProgress:Play()
     
-    -- Auto remove after duration
     task.delay(duration, function()
         local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 1, Position = UDim2.new(0.5, -150, 0, yOffset - 20)})
         tweenOut:Play()
@@ -134,7 +160,6 @@ local function makeDraggable(frame, parentScreen)
             local newX = frameStartPos.X.Offset + delta.X
             local newY = frameStartPos.Y.Offset + delta.Y
             
-            -- Bounds checking - prevent going off screen
             local maxX = parentScreen.AbsoluteSize.X - frame.AbsoluteSize.X
             local maxY = parentScreen.AbsoluteSize.Y - frame.AbsoluteSize.Y
             newX = math.clamp(newX, 0, maxX)
@@ -151,15 +176,76 @@ local function makeDraggable(frame, parentScreen)
     end)
 end
 
--- Function to fetch key from raw URL
-local function fetchValidKey()
+-- Function to fetch available keys from GitHub
+local function fetchAvailableKeys()
     local success, data = pcall(function()
-        return game:HttpGet("https://raw.githubusercontent.com/LEDeveloper-web/LEScript-Key/refs/heads/main/KEY")
+        return game:HttpGet("https://raw.githubusercontent.com/LEDeveloper-web/LEScript-Key/refs/heads/main/keys.json")
     end)
     if success then
-        return data:gsub("%s+", "")
+        local success2, keys = pcall(function()
+            return HttpService:JSONDecode(data)
+        end)
+        if success2 and type(keys) == "table" then
+            return keys
+        end
     end
-    return nil
+    return {}
+end
+
+-- Function to check if a key is valid and unused
+local function validateKey(key)
+    local availableKeys = fetchAvailableKeys()
+    local today = os.date("%Y-%m-%d")
+    local userIdentifier = Player.UserId
+    
+    -- Check if key exists in available keys
+    local keyFound = false
+    for _, validKey in ipairs(availableKeys) do
+        if validKey == key then
+            keyFound = true
+            break
+        end
+    end
+    
+    if not keyFound then
+        return false, "Key not found in today's key list"
+    end
+    
+    -- Check if this user has already used this key today
+    local userKeyData = usedKeysStore[tostring(userIdentifier)]
+    if userKeyData and userKeyData.key == key and userKeyData.date == today then
+        return false, "This key has already been used by you today"
+    end
+    
+    return true, "Key is valid"
+end
+
+-- Function to mark a key as used
+local function markKeyAsUsed(key)
+    local today = os.date("%Y-%m-%d")
+    local userIdentifier = Player.UserId
+    
+    usedKeysStore[tostring(userIdentifier)] = {
+        key = key,
+        date = today,
+        usedAt = os.time()
+    }
+    saveUsedKeys()
+end
+
+-- Function to check if user already has an active session today
+local function hasActiveSession()
+    local today = os.date("%Y-%m-%d")
+    local userIdentifier = Player.UserId
+    local userData = usedKeysStore[tostring(userIdentifier)]
+    
+    if userData and userData.date == today then
+        -- User has used a key today, check if their timer is still running
+        if countdownActive and countdownEndTime and countdownEndTime > os.time() then
+            return true, userData.key
+        end
+    end
+    return false, nil
 end
 
 -- ================================
@@ -171,7 +257,7 @@ screenGui.Parent = Player.PlayerGui
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.ResetOnSpawn = false
 
--- Background Image (loaded from Dropbox)
+-- Background Image
 local bgImageLabel = Instance.new("ImageLabel")
 bgImageLabel.Name = "BackgroundImage"
 bgImageLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -197,7 +283,6 @@ local frame1Corner = Instance.new("UICorner")
 frame1Corner.CornerRadius = UDim.new(0, 12)
 frame1Corner.Parent = frame1
 
--- Shape Frame1 (Square)
 local shapeFrame1 = Instance.new("Frame")
 shapeFrame1.Size = UDim2.new(0, 300, 0, 300)
 shapeFrame1.Position = UDim2.new(0.5, -150, 0.5, -150)
@@ -211,7 +296,6 @@ local shapeCorner = Instance.new("UICorner")
 shapeCorner.CornerRadius = UDim.new(0, 8)
 shapeCorner.Parent = shapeFrame1
 
--- Image inside Frame1
 local buttonImage = Instance.new("ImageLabel")
 buttonImage.Size = UDim2.new(0, 200, 0, 200)
 buttonImage.Position = UDim2.new(0.5, -100, 0.5, -100)
@@ -219,7 +303,6 @@ buttonImage.BackgroundTransparency = 1
 buttonImage.Image = "https://www.dropbox.com/scl/fi/777yhr2rb2kz0q2ms9td3/LEModz_Img_Button.jpg?rlkey=2ru00hr721mxepl347rbfmwok&st=zddam1ge&dl=1"
 buttonImage.Parent = shapeFrame1
 
--- Shape Button (Rectangle) - Transparent button with text
 local shapeButton = Instance.new("TextButton")
 shapeButton.Size = UDim2.new(0, 200, 0, 50)
 shapeButton.Position = UDim2.new(0.5, -100, 1, -60)
@@ -236,8 +319,8 @@ shapeButton.Parent = shapeFrame1
 -- ================================
 local frame2 = Instance.new("Frame")
 frame2.Name = "KeySystem"
-frame2.Size = UDim2.new(0, 350, 0, 250)
-frame2.Position = UDim2.new(0.5, -175, 0.5, -125)
+frame2.Size = UDim2.new(0, 350, 0, 280)
+frame2.Position = UDim2.new(0.5, -175, 0.5, -140)
 frame2.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame2.BackgroundTransparency = 0.15
 frame2.BorderSizePixel = 0
@@ -248,24 +331,34 @@ local frame2Corner = Instance.new("UICorner")
 frame2Corner.CornerRadius = UDim.new(0, 12)
 frame2Corner.Parent = frame2
 
--- Title
 local title2 = Instance.new("TextLabel")
 title2.Size = UDim2.new(1, 0, 0, 40)
 title2.Position = UDim2.new(0, 0, 0, 0)
 title2.BackgroundTransparency = 1
-title2.Text = "LEModz | Key"
+title2.Text = "LEModz | Key System"
 title2.TextColor3 = Color3.fromRGB(255, 200, 100)
 title2.TextSize = 18
 title2.Font = Enum.Font.GothamBold
 title2.Parent = frame2
 
--- Key Input Box
+-- Status label for today's key info
+local keyStatusLabel = Instance.new("TextLabel")
+keyStatusLabel.Size = UDim2.new(1, -20, 0, 30)
+keyStatusLabel.Position = UDim2.new(0, 10, 0, 45)
+keyStatusLabel.BackgroundTransparency = 1
+keyStatusLabel.Text = "Keys reset daily! Get your key from Discord"
+keyStatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+keyStatusLabel.TextSize = 11
+keyStatusLabel.Font = Enum.Font.Gotham
+keyStatusLabel.TextWrapped = true
+keyStatusLabel.Parent = frame2
+
 local keyInput = Instance.new("TextBox")
 keyInput.Size = UDim2.new(0, 250, 0, 40)
-keyInput.Position = UDim2.new(0.5, -125, 0.5, -60)
+keyInput.Position = UDim2.new(0.5, -125, 0.5, -40)
 keyInput.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
 keyInput.Text = ""
-keyInput.PlaceholderText = "Enter Key"
+keyInput.PlaceholderText = "Enter One-Time Key"
 keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 keyInput.Font = Enum.Font.Gotham
 keyInput.TextSize = 14
@@ -275,10 +368,9 @@ local keyInputCorner = Instance.new("UICorner")
 keyInputCorner.CornerRadius = UDim.new(0, 6)
 keyInputCorner.Parent = keyInput
 
--- Get Key Button
 local getKeyBtn = Instance.new("TextButton")
 getKeyBtn.Size = UDim2.new(0, 100, 0, 35)
-getKeyBtn.Position = UDim2.new(0.2, -50, 0.7, 0)
+getKeyBtn.Position = UDim2.new(0.2, -50, 0.8, 0)
 getKeyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 getKeyBtn.Text = "Get Key"
 getKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -290,10 +382,9 @@ local getKeyCorner = Instance.new("UICorner")
 getKeyCorner.CornerRadius = UDim.new(0, 6)
 getKeyCorner.Parent = getKeyBtn
 
--- Confirm Key Button
 local confirmKeyBtn = Instance.new("TextButton")
 confirmKeyBtn.Size = UDim2.new(0, 100, 0, 35)
-confirmKeyBtn.Position = UDim2.new(0.8, -50, 0.7, 0)
+confirmKeyBtn.Position = UDim2.new(0.8, -50, 0.8, 0)
 confirmKeyBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 confirmKeyBtn.Text = "Confirm Key"
 confirmKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -310,8 +401,8 @@ confirmKeyCorner.Parent = confirmKeyBtn
 -- ================================
 local frame3 = Instance.new("Frame")
 frame3.Name = "GetKeyFrame"
-frame3.Size = UDim2.new(0, 350, 0, 200)
-frame3.Position = UDim2.new(0.5, -175, 0.5, -100)
+frame3.Size = UDim2.new(0, 350, 0, 220)
+frame3.Position = UDim2.new(0.5, -175, 0.5, -110)
 frame3.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame3.BackgroundTransparency = 0.15
 frame3.BorderSizePixel = 0
@@ -326,26 +417,27 @@ local title3 = Instance.new("TextLabel")
 title3.Size = UDim2.new(1, 0, 0, 40)
 title3.Position = UDim2.new(0, 0, 0, 0)
 title3.BackgroundTransparency = 1
-title3.Text = "LEModz | Get Key"
+title3.Text = "LEModz | Get One-Time Key"
 title3.TextColor3 = Color3.fromRGB(255, 200, 100)
 title3.TextSize = 18
 title3.Font = Enum.Font.GothamBold
 title3.Parent = frame3
 
 local infoText = Instance.new("TextLabel")
-infoText.Size = UDim2.new(1, -40, 0, 40)
-infoText.Position = UDim2.new(0, 20, 0.4, 0)
+infoText.Size = UDim2.new(1, -40, 0, 50)
+infoText.Position = UDim2.new(0, 20, 0.35, 0)
 infoText.BackgroundTransparency = 1
-infoText.Text = "Free Key in Discord Link"
+infoText.Text = "• Keys reset DAILY\n• Each key works ONCE per user\n• Get your unique key from Discord\n• Key lasts 24 hours after activation"
 infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
-infoText.TextSize = 14
+infoText.TextSize = 12
 infoText.Font = Enum.Font.Gotham
+infoText.TextXAlignment = Enum.TextXAlignment.Left
+infoText.TextYAlignment = Enum.TextYAlignment.Top
 infoText.Parent = frame3
 
--- Back to Enter Key Button
 local backToKeyBtn = Instance.new("TextButton")
 backToKeyBtn.Size = UDim2.new(0, 130, 0, 35)
-backToKeyBtn.Position = UDim2.new(0.25, -65, 0.7, 0)
+backToKeyBtn.Position = UDim2.new(0.25, -65, 0.75, 0)
 backToKeyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 backToKeyBtn.Text = "Back to Enter Key"
 backToKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -357,12 +449,11 @@ local backCorner = Instance.new("UICorner")
 backCorner.CornerRadius = UDim.new(0, 6)
 backCorner.Parent = backToKeyBtn
 
--- Discord Button
 local discordBtn = Instance.new("TextButton")
 discordBtn.Size = UDim2.new(0, 130, 0, 35)
-discordBtn.Position = UDim2.new(0.75, -65, 0.7, 0)
+discordBtn.Position = UDim2.new(0.75, -65, 0.75, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-discordBtn.Text = "Discord"
+discordBtn.Text = "Join Discord"
 discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 discordBtn.Font = Enum.Font.Gotham
 discordBtn.TextSize = 14
@@ -389,7 +480,6 @@ local frame4Corner = Instance.new("UICorner")
 frame4Corner.CornerRadius = UDim.new(0, 12)
 frame4Corner.Parent = frame4
 
--- Title Bar with Menu Button and Close Button
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 40)
 titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
@@ -401,7 +491,6 @@ local titleBarCorner = Instance.new("UICorner")
 titleBarCorner.CornerRadius = UDim.new(0, 12)
 titleBarCorner.Parent = titleBar
 
--- Menu Button (opens/closes menu sidebar)
 local menuBtn = Instance.new("TextButton")
 menuBtn.Size = UDim2.new(0, 60, 0, 30)
 menuBtn.Position = UDim2.new(0, 10, 0.5, -15)
@@ -416,7 +505,6 @@ local menuBtnCorner = Instance.new("UICorner")
 menuBtnCorner.CornerRadius = UDim.new(0, 6)
 menuBtnCorner.Parent = menuBtn
 
--- Title Label
 local title4 = Instance.new("TextLabel")
 title4.Size = UDim2.new(0, 200, 1, 0)
 title4.Position = UDim2.new(0.5, -100, 0, 0)
@@ -427,7 +515,6 @@ title4.TextSize = 18
 title4.Font = Enum.Font.GothamBold
 title4.Parent = titleBar
 
--- Close Button (Close3 logic)
 local closeBtn4 = Instance.new("TextButton")
 closeBtn4.Size = UDim2.new(0, 60, 0, 30)
 closeBtn4.Position = UDim2.new(1, -70, 0.5, -15)
@@ -442,7 +529,6 @@ local closeBtnCorner = Instance.new("UICorner")
 closeBtnCorner.CornerRadius = UDim.new(0, 6)
 closeBtnCorner.Parent = closeBtn4
 
--- Menu Sidebar (hidden by default)
 local menuSidebar = Instance.new("Frame")
 menuSidebar.Size = UDim2.new(0, 150, 1, -40)
 menuSidebar.Position = UDim2.new(-151, 0, 0, 40)
@@ -456,18 +542,16 @@ local sidebarCorner = Instance.new("UICorner")
 sidebarCorner.CornerRadius = UDim.new(0, 8)
 sidebarCorner.Parent = menuSidebar
 
--- Menu items (placeholder for future features)
 local menuItem1 = Instance.new("TextLabel")
 menuItem1.Size = UDim2.new(1, 0, 0, 40)
 menuItem1.Position = UDim2.new(0, 0, 0, 10)
 menuItem1.BackgroundTransparency = 1
-menuItem1.Text = "Options"
+menuItem1.Text = "Key Active ✅"
 menuItem1.TextColor3 = Color3.fromRGB(220, 220, 220)
 menuItem1.Font = Enum.Font.Gotham
 menuItem1.TextSize = 16
 menuItem1.Parent = menuSidebar
 
--- Countdown Box (CB1)
 local countdownBox = Instance.new("Frame")
 countdownBox.Size = UDim2.new(0, 300, 0, 100)
 countdownBox.Position = UDim2.new(0.5, -150, 0.5, -50)
@@ -489,6 +573,17 @@ timerLabel.TextSize = 28
 timerLabel.Font = Enum.Font.GothamBold
 timerLabel.Parent = countdownBox
 
+-- Key expiry info label
+local keyExpiryLabel = Instance.new("TextLabel")
+keyExpiryLabel.Size = UDim2.new(1, 0, 0, 30)
+keyExpiryLabel.Position = UDim2.new(0, 0, 1, -35)
+keyExpiryLabel.BackgroundTransparency = 1
+keyExpiryLabel.Text = "Session expires after 24 hours"
+keyExpiryLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+keyExpiryLabel.TextSize = 12
+keyExpiryLabel.Font = Enum.Font.Gotham
+keyExpiryLabel.Parent = frame4
+
 -- ================================
 -- DRAG FUNCTIONALITY FOR ALL FRAMES
 -- ================================
@@ -500,13 +595,14 @@ makeDraggable(frame4, screenGui)
 -- ================================
 -- LOGIC STATE
 -- ================================
-local currentState = "L1_Close" -- L1_Close, L1_Open, L2_Close3, L2_Open3
+local currentState = "L1_Close"
 local countdownEndTime = nil
 local countdownActive = false
 local countdownConnection = nil
 local keyValidated = false
+local currentUsedKey = nil
 
--- Timer update function (L3)
+-- Timer update function
 local function updateTimerDisplay()
     if not countdownActive or not countdownEndTime then
         timerLabel.Text = "00H 00M 00S"
@@ -515,20 +611,25 @@ local function updateTimerDisplay()
     
     local remaining = countdownEndTime - os.time()
     if remaining <= 0 then
-        -- Timer ended, go back to L1 logic
         countdownActive = false
         if countdownConnection then
             countdownConnection:Disconnect()
             countdownConnection = nil
         end
         timerLabel.Text = "00H 00M 00S"
+        
+        -- Key expired, reset the stored key usage for next day
+        -- But keep record that it was used today to prevent reuse of same day key
+        notify("Key Expired", "Your 24-hour session has ended. Get a new key from Discord tomorrow!", 5)
+        
         -- Reset to L1 Close state
         currentState = "L1_Close"
+        keyValidated = false
+        currentUsedKey = nil
         frame1.Visible = true
         frame2.Visible = false
         frame3.Visible = false
         frame4.Visible = false
-        notify("Timer Ended", "Your key has expired. Please re-enter a new key.", 5)
     else
         local hours = math.floor(remaining / 3600)
         local minutes = math.floor((remaining % 3600) / 60)
@@ -545,7 +646,6 @@ local function startCountdown(durationSeconds)
         countdownConnection:Disconnect()
     end
     
-    -- Real-time timer update (L3)
     countdownConnection = game:GetService("RunService").Heartbeat:Connect(function()
         updateTimerDisplay()
     end)
@@ -556,7 +656,7 @@ end
 -- BUTTON FUNCTIONALITY
 -- ================================
 
--- Frame1: OPEN button (goes to L1_Open)
+-- Frame1: OPEN button
 shapeButton.MouseButton1Click:Connect(function()
     if currentState == "L1_Close" then
         currentState = "L1_Open"
@@ -564,10 +664,16 @@ shapeButton.MouseButton1Click:Connect(function()
         frame2.Visible = true
         frame3.Visible = false
         frame4.Visible = false
+    elseif currentState == "L2_Close3" and keyValidated then
+        currentState = "L2_Open3"
+        frame1.Visible = false
+        frame4.Visible = true
+        frame2.Visible = false
+        frame3.Visible = false
     end
 end)
 
--- Frame2: Get Key button (goes to Frame3)
+-- Frame2: Get Key button
 getKeyBtn.MouseButton1Click:Connect(function()
     frame2.Visible = false
     frame3.Visible = true
@@ -578,22 +684,36 @@ end)
 -- Frame2: Confirm Key button
 confirmKeyBtn.MouseButton1Click:Connect(function()
     local enteredKey = keyInput.Text:gsub("%s+", "")
-    local validKey = fetchValidKey()
     
-    if validKey and enteredKey == validKey then
+    if enteredKey == "" then
+        notify("Error", "Please enter a key", 3)
+        return
+    end
+    
+    local isValid, message = validateKey(enteredKey)
+    
+    if isValid then
+        -- Mark the key as used for this user
+        markKeyAsUsed(enteredKey)
         keyValidated = true
-        -- Start 24-hour countdown (L3)
+        currentUsedKey = enteredKey
+        
+        -- Start 24-hour countdown
         startCountdown(24 * 60 * 60)
-        -- Notify Frame5-C
-        notify("Key Confirmed", "Key has been Confirmed, Key Countdown in 24H", 5)
+        
+        notify("Key Confirmed", "Key validated! You have 24 hours of access.", 5)
+        
         -- Go to L2 Close3 (Frame1 visible)
         currentState = "L2_Close3"
         frame1.Visible = true
         frame2.Visible = false
         frame3.Visible = false
         frame4.Visible = false
+        
+        -- Clear input
+        keyInput.Text = ""
     else
-        notify("Invalid Key", "The key you entered is invalid. Please get a valid key from Discord.", 4)
+        notify("Key Invalid", message, 4)
     end
 end)
 
@@ -603,18 +723,18 @@ backToKeyBtn.MouseButton1Click:Connect(function()
     frame2.Visible = true
 end)
 
--- Frame3: Discord button (copies link)
+-- Frame3: Discord button
 discordBtn.MouseButton1Click:Connect(function()
     local discordLink = "https://discord.gg/NBdp4zuJtt"
     if Clipboard then
         Clipboard(discordLink)
-        notify("Discord Link Copied", "Discord Link Copied, Join Discord Server Now, the Key is Waiting", 5) -- Frame5-B
+        notify("Discord Invite Copied", "Join Discord to get your daily one-time key!", 5)
     else
-        notify("Copy Failed", "Your executor does not support clipboard copying. Link: " .. discordLink, 8)
+        notify("Copy Failed", "Your executor doesn't support copy. Link: " .. discordLink, 8)
     end
 end)
 
--- Frame4: Close button (Close3 logic - goes back to Frame1)
+-- Frame4: Close button
 closeBtn4.MouseButton1Click:Connect(function()
     if currentState == "L2_Open3" then
         currentState = "L2_Close3"
@@ -625,7 +745,7 @@ closeBtn4.MouseButton1Click:Connect(function()
     end
 end)
 
--- Frame4: Menu button (opens/closes sidebar)
+-- Frame4: Menu button
 local menuOpen = false
 menuBtn.MouseButton1Click:Connect(function()
     menuOpen = not menuOpen
@@ -639,40 +759,51 @@ menuBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Frame1 button from L2 (when key is validated, button on Frame1 goes to Frame4)
--- Override shapeButton behavior when in L2 state
-local originalClick = shapeButton.MouseButton1Click
-shapeButton.MouseButton1Click:Connect(function()
-    if currentState == "L2_Close3" and keyValidated then
-        currentState = "L2_Open3"
-        frame1.Visible = false
-        frame4.Visible = true
-        frame2.Visible = false
-        frame3.Visible = false
-    elseif currentState == "L1_Close" then
-        currentState = "L1_Open"
-        frame1.Visible = false
-        frame2.Visible = true
-        frame3.Visible = false
-        frame4.Visible = false
+-- ================================
+-- CHECK FOR EXISTING ACTIVE SESSION ON LOAD
+-- ================================
+local hasSession, usedKey = hasActiveSession()
+if hasSession and usedKey then
+    keyValidated = true
+    currentUsedKey = usedKey
+    currentState = "L2_Close3"
+    frame1.Visible = true
+    frame2.Visible = false
+    frame3.Visible = false
+    frame4.Visible = false
+    
+    -- Calculate remaining time from stored data
+    local userIdentifier = Player.UserId
+    local userData = usedKeysStore[tostring(userIdentifier)]
+    if userData and userData.usedAt then
+        local elapsed = os.time() - userData.usedAt
+        local remaining = (24 * 60 * 60) - elapsed
+        if remaining > 0 then
+            startCountdown(remaining)
+            notify("Session Restored", "Your active session has been restored!", 3)
+        end
     end
-end)
+end
 
 -- ================================
--- NOTIFY SCRIPT LOADED (Frame5-A)
+-- NOTIFY SCRIPT LOADED
 -- ================================
-notify("LEModz Loaded", "Loadstring Script Loaded Successfully!", 4)
+notify("LEModz Loaded", "One-time key system active! Get your key from Discord.", 4)
 
 -- ================================
--- INITIAL STATE: L1_Close
+-- INITIAL STATE
 -- ================================
-currentState = "L1_Close"
-frame1.Visible = true
-frame2.Visible = false
-frame3.Visible = false
-frame4.Visible = false
+if not keyValidated then
+    currentState = "L1_Close"
+    frame1.Visible = true
+    frame2.Visible = false
+    frame3.Visible = false
+    frame4.Visible = false
+end
 
--- Clean up on player leaving (optional)
+-- ================================
+-- CLEANUP
+-- ================================
 Player:OnTeleport(function()
     screenGui:Destroy()
 end)
