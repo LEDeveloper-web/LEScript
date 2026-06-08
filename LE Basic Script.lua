@@ -267,17 +267,18 @@ bgImageLabel.ScaleType = Enum.ScaleType.Crop
 bgImageLabel.Parent = screenGui
 
 -- ================================
--- FRAME1: ButtonSystem (1/32 Screen Size)
+-- FRAME1: ButtonSystem (1/8 Screen Size - Cube/Center)
+-- Layout: Image on Top, Button Below
 -- ================================
 local frame1 = Instance.new("Frame")
 frame1.Name = "ButtonSystem"
 
 -- Get screen size
 local screenSize = workspace.CurrentCamera.ViewportSize
-local frameSize = screenSize / 32
+local frameSize = math.min(screenSize.X, screenSize.Y) / 8  -- Cube (square)
 
-frame1.Size = UDim2.new(0, frameSize.X, 0, frameSize.Y)
-frame1.Position = UDim2.new(0.5, -frameSize.X/2, 0.5, -frameSize.Y/2)
+frame1.Size = UDim2.new(0, frameSize, 0, frameSize)
+frame1.Position = UDim2.new(0.5, -frameSize/2, 0.5, -frameSize/2)
 frame1.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame1.BackgroundTransparency = 0.15
 frame1.BorderSizePixel = 0
@@ -288,11 +289,12 @@ local frame1Corner = Instance.new("UICorner")
 frame1Corner.CornerRadius = UDim.new(0, 12)
 frame1Corner.Parent = frame1
 
--- Shape Frame1 (Square inside - 80% of frame)
-local shapeSize = math.min(frameSize.X, frameSize.Y) * 0.8
+-- Shape Frame1 (Inner border - slightly smaller)
+local innerPadding = frameSize * 0.05
+local innerSize = frameSize - (innerPadding * 2)
 local shapeFrame1 = Instance.new("Frame")
-shapeFrame1.Size = UDim2.new(0, shapeSize, 0, shapeSize)
-shapeFrame1.Position = UDim2.new(0.5, -shapeSize/2, 0.5, -shapeSize/2)
+shapeFrame1.Size = UDim2.new(0, innerSize, 0, innerSize)
+shapeFrame1.Position = UDim2.new(0.5, -innerSize/2, 0.5, -innerSize/2)
 shapeFrame1.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 shapeFrame1.BackgroundTransparency = 0.3
 shapeFrame1.BorderSizePixel = 2
@@ -303,28 +305,36 @@ local shapeCorner = Instance.new("UICorner")
 shapeCorner.CornerRadius = UDim.new(0, 8)
 shapeCorner.Parent = shapeFrame1
 
--- Image inside Frame1 (70% of shape)
-local imageSize = shapeSize * 0.7
+-- Image on TOP (60% of frame height, centered horizontally)
+local imageHeight = innerSize * 0.6
+local imageWidth = imageHeight  -- Keep square aspect ratio
 local buttonImage = Instance.new("ImageLabel")
-buttonImage.Size = UDim2.new(0, imageSize, 0, imageSize)
-buttonImage.Position = UDim2.new(0.5, -imageSize/2, 0.5, -imageSize/2)
+buttonImage.Size = UDim2.new(0, imageWidth, 0, imageHeight)
+buttonImage.Position = UDim2.new(0.5, -imageWidth/2, 0.15, 0)
 buttonImage.BackgroundTransparency = 1
 buttonImage.Image = "https://www.dropbox.com/scl/fi/777yhr2rb2kz0q2ms9td3/LEModz_Img_Button.jpg?rlkey=2ru00hr721mxepl347rbfmwok&st=zddam1ge&dl=1"
 buttonImage.Parent = shapeFrame1
 
--- Shape Button (Rectangle) - Transparent button with text
-local buttonHeight = shapeSize * 0.12
-local buttonWidth = shapeSize * 0.6
+-- Shape Button BELOW the image (20% of frame height)
+local buttonHeight = innerSize * 0.2
+local buttonWidth = innerSize * 0.7
 local shapeButton = Instance.new("TextButton")
 shapeButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
-shapeButton.Position = UDim2.new(0.5, -buttonWidth/2, 0.85, -buttonHeight/2)
-shapeButton.BackgroundTransparency = 1
+shapeButton.Position = UDim2.new(0.5, -buttonWidth/2, 0.78, 0)
+shapeButton.BackgroundTransparency = 0
+shapeButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 shapeButton.Text = "OPEN"
 shapeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-shapeButton.TextSize = math.floor(buttonHeight * 0.4)
+shapeButton.TextSize = math.floor(buttonHeight * 0.5)
 shapeButton.Font = Enum.Font.GothamBold
 shapeButton.BorderSizePixel = 0
 shapeButton.Parent = shapeFrame1
+
+-- Button corner rounding
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 6)
+buttonCorner.Parent = shapeButton
+
 -- ================================
 -- FRAME2: KeySystem
 -- ================================
