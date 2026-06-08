@@ -17,7 +17,7 @@
     - Users can request a new key from Discord daily
     
     To use as a loadstring:
-    loadstring(game:HttpGet("https://pastebin.com/raw/your_paste_id"))()
+    loadstring(game:HttpGet("https://pastebin.com/raw/kvSfrZB5"))()
 --]]
 
 -- ================================
