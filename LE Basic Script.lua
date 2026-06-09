@@ -257,14 +257,21 @@ screenGui.Parent = Player.PlayerGui
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.ResetOnSpawn = false
 
--- Background Image
-local bgImageLabel = Instance.new("ImageLabel")
-bgImageLabel.Name = "BackgroundImage"
-bgImageLabel.Size = UDim2.new(1, 0, 1, 0)
-bgImageLabel.BackgroundTransparency = 1
-bgImageLabel.Image = "https://www.dropbox.com/scl/fi/c4wq3ddady4yamawm2apg/LEModz_Background.jpeg?rlkey=czewj8x20qdjmar7hcrw977x3&st=dont9vp4&dl=1"
-bgImageLabel.ScaleType = Enum.ScaleType.Crop
-bgImageLabel.Parent = screenGui
+-- Roblox Decal ID for all backgrounds
+local BACKGROUND_DECAL_ID = "123674130876025"
+
+-- Function to create a background image label for any frame
+local function createBackground(frame, decalId)
+    local bgImage = Instance.new("ImageLabel")
+    bgImage.Name = "BackgroundImage"
+    bgImage.Size = UDim2.new(1, 0, 1, 0)
+    bgImage.Position = UDim2.new(0, 0, 0, 0)
+    bgImage.BackgroundTransparency = 1
+    bgImage.Image = "rbxassetid://" .. decalId
+    bgImage.ScaleType = Enum.ScaleType.Crop
+    bgImage.Parent = frame
+    return bgImage
+end
 
 -- ================================
 -- FRAME1: ButtonSystem (1/8 Screen Size - Cube/Center)
@@ -285,6 +292,10 @@ frame1.BorderSizePixel = 0
 frame1.Visible = true
 frame1.Parent = screenGui
 
+-- Background for Frame1
+local frame1Bg = createBackground(frame1, BACKGROUND_DECAL_ID)
+frame1Bg.ImageTransparency = 0.85
+
 local frame1Corner = Instance.new("UICorner")
 frame1Corner.CornerRadius = UDim.new(0, 12)
 frame1Corner.Parent = frame1
@@ -296,7 +307,7 @@ local shapeFrame1 = Instance.new("Frame")
 shapeFrame1.Size = UDim2.new(0, innerSize, 0, innerSize)
 shapeFrame1.Position = UDim2.new(0.5, -innerSize/2, 0.5, -innerSize/2)
 shapeFrame1.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-shapeFrame1.BackgroundTransparency = 0.3
+shapeFrame1.BackgroundTransparency = 0.5
 shapeFrame1.BorderSizePixel = 2
 shapeFrame1.BorderColor3 = Color3.fromRGB(255, 100, 100)
 shapeFrame1.Parent = frame1
@@ -312,7 +323,8 @@ local buttonImage = Instance.new("ImageLabel")
 buttonImage.Size = UDim2.new(0, imageWidth, 0, imageHeight)
 buttonImage.Position = UDim2.new(0.5, -imageWidth/2, 0.15, 0)
 buttonImage.BackgroundTransparency = 1
-buttonImage.Image = "https://www.dropbox.com/scl/fi/777yhr2rb2kz0q2ms9td3/LEModz_Img_Button.jpg?rlkey=2ru00hr721mxepl347rbfmwok&st=zddam1ge&dl=1"
+buttonImage.Image = "rbxassetid://123674130876025"
+buttonImage.ScaleType = Enum.ScaleType.Fit
 buttonImage.Parent = shapeFrame1
 
 -- Shape Button BELOW the image (20% of frame height)
@@ -347,6 +359,9 @@ frame2.BackgroundTransparency = 0.15
 frame2.BorderSizePixel = 0
 frame2.Visible = false
 frame2.Parent = screenGui
+
+local frame2Bg = createBackground(frame2, BACKGROUND_DECAL_ID)
+frame2Bg.ImageTransparency = 0.85
 
 local frame2Corner = Instance.new("UICorner")
 frame2Corner.CornerRadius = UDim.new(0, 12)
@@ -430,6 +445,9 @@ frame3.BorderSizePixel = 0
 frame3.Visible = false
 frame3.Parent = screenGui
 
+local frame3Bg = createBackground(frame3, BACKGROUND_DECAL_ID)
+frame3Bg.ImageTransparency = 0.85
+
 local frame3Corner = Instance.new("UICorner")
 frame3Corner.CornerRadius = UDim.new(0, 12)
 frame3Corner.Parent = frame3
@@ -496,6 +514,9 @@ frame4.BackgroundTransparency = 0.15
 frame4.BorderSizePixel = 0
 frame4.Visible = false
 frame4.Parent = screenGui
+
+local frame4Bg = createBackground(frame4, BACKGROUND_DECAL_ID)
+frame4Bg.ImageTransparency = 0.85
 
 local frame4Corner = Instance.new("UICorner")
 frame4Corner.CornerRadius = UDim.new(0, 12)
