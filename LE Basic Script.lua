@@ -19,11 +19,17 @@
         ↓ [Click Confirm Key with valid key]
     L2_Close3 (Frame1 visible - Timer running)
         ↓ [Click OPEN]
-    L2_Open3 (Frame4 visible - System Panel with Countdown)
+    L2_Open3 (Frame4 visible - System Panel)
         ↓ [Click Close]
     L2_Close3 (Back to Frame1)
         ↓ [Timer reaches 0]
     L1_Close (Reset - Key expired)
+    
+    FRAME SIZES:
+    Frame1: 1/8 Cube
+    Frame2: 1/4 Cube
+    Frame3: 1/4 Cube
+    Frame4: 70% width, 90% height
     
     To use as a loadstring:
     loadstring(game:HttpGet("https://pastebin.com/raw/kvSfrZB5"))()
@@ -276,22 +282,23 @@ local function createBackground(frame, decalId)
     return bgImage
 end
 
--- Get screen size for dynamic sizing
+-- Get screen size function
 local function getScreenSize()
     return workspace.CurrentCamera.ViewportSize
 end
 
+local screenSize = getScreenSize()
+
 -- ================================
--- FRAME1: ButtonSystem (1/8 Screen Size - Cube/Center)
+-- FRAME1: ButtonSystem (1/8 Cube)
 -- ================================
 local frame1 = Instance.new("Frame")
 frame1.Name = "ButtonSystem"
 
-local screenSize = getScreenSize()
-local frameSize = math.min(screenSize.X, screenSize.Y) / 8
+local frame1Size = math.min(screenSize.X, screenSize.Y) / 8
 
-frame1.Size = UDim2.new(0, frameSize, 0, frameSize)
-frame1.Position = UDim2.new(0.5, -frameSize/2, 0.5, -frameSize/2)
+frame1.Size = UDim2.new(0, frame1Size, 0, frame1Size)
+frame1.Position = UDim2.new(0.5, -frame1Size/2, 0.5, -frame1Size/2)
 frame1.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame1.BackgroundTransparency = 0.15
 frame1.BorderSizePixel = 0
@@ -305,8 +312,8 @@ local frame1Corner = Instance.new("UICorner")
 frame1Corner.CornerRadius = UDim.new(0, 12)
 frame1Corner.Parent = frame1
 
-local innerPadding = frameSize * 0.05
-local innerSize = frameSize - (innerPadding * 2)
+local innerPadding = frame1Size * 0.05
+local innerSize = frame1Size - (innerPadding * 2)
 local shapeFrame1 = Instance.new("Frame")
 shapeFrame1.Size = UDim2.new(0, innerSize, 0, innerSize)
 shapeFrame1.Position = UDim2.new(0.5, -innerSize/2, 0.5, -innerSize/2)
@@ -349,7 +356,7 @@ buttonCorner.CornerRadius = UDim.new(0, 6)
 buttonCorner.Parent = shapeButton
 
 -- ================================
--- FRAME2: KeySystem (1/4 CUBE)
+-- FRAME2: KeySystem (1/4 Cube)
 -- ================================
 local frame2 = Instance.new("Frame")
 frame2.Name = "KeySystem"
@@ -388,7 +395,7 @@ title2.Position = UDim2.new(0.5, -100, 0, 0)
 title2.BackgroundTransparency = 1
 title2.Text = "LEModz | Key System"
 title2.TextColor3 = Color3.fromRGB(255, 200, 100)
-title2.TextSize = 18
+title2.TextSize = 16
 title2.Font = Enum.Font.GothamBold
 title2.Parent = titleBar2
 
@@ -409,7 +416,7 @@ closeBtn2Corner.Parent = closeBtn2
 
 local keyStatusLabel = Instance.new("TextLabel")
 keyStatusLabel.Size = UDim2.new(1, -20, 0, 25)
-keyStatusLabel.Position = UDim2.new(0, 10, 0, 45)
+keyStatusLabel.Position = UDim2.new(0, 10, 0, 48)
 keyStatusLabel.BackgroundTransparency = 1
 keyStatusLabel.Text = "Keys reset daily! Get your key from Discord"
 keyStatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -420,7 +427,7 @@ keyStatusLabel.Parent = frame2
 
 local keyInput = Instance.new("TextBox")
 keyInput.Size = UDim2.new(0, quarterSize * 0.6, 0, 40)
-keyInput.Position = UDim2.new(0.5, -(quarterSize * 0.3), 0.4, -10)
+keyInput.Position = UDim2.new(0.5, -(quarterSize * 0.3), 0.42, -10)
 keyInput.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
 keyInput.Text = ""
 keyInput.PlaceholderText = "Enter Key"
@@ -435,7 +442,7 @@ keyInputCorner.Parent = keyInput
 
 local getKeyBtn = Instance.new("TextButton")
 getKeyBtn.Size = UDim2.new(0, quarterSize * 0.3, 0, 35)
-getKeyBtn.Position = UDim2.new(0.25, -(quarterSize * 0.15), 0.7, 0)
+getKeyBtn.Position = UDim2.new(0.25, -(quarterSize * 0.15), 0.72, 0)
 getKeyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 getKeyBtn.Text = "Get Key"
 getKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -449,7 +456,7 @@ getKeyCorner.Parent = getKeyBtn
 
 local confirmKeyBtn = Instance.new("TextButton")
 confirmKeyBtn.Size = UDim2.new(0, quarterSize * 0.3, 0, 35)
-confirmKeyBtn.Position = UDim2.new(0.75, -(quarterSize * 0.15), 0.7, 0)
+confirmKeyBtn.Position = UDim2.new(0.75, -(quarterSize * 0.15), 0.72, 0)
 confirmKeyBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 confirmKeyBtn.Text = "Confirm"
 confirmKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -462,7 +469,7 @@ confirmKeyCorner.CornerRadius = UDim.new(0, 6)
 confirmKeyCorner.Parent = confirmKeyBtn
 
 -- ================================
--- FRAME3: GetKey Frame (1/4 CUBE)
+-- FRAME3: GetKey Frame (1/4 Cube)
 -- ================================
 local frame3 = Instance.new("Frame")
 frame3.Name = "GetKeyFrame"
@@ -492,10 +499,10 @@ title3.Font = Enum.Font.GothamBold
 title3.Parent = frame3
 
 local infoText = Instance.new("TextLabel")
-infoText.Size = UDim2.new(1, -30, 0, 100)
-infoText.Position = UDim2.new(0, 15, 0.25, 0)
+infoText.Size = UDim2.new(1, -30, 0, 110)
+infoText.Position = UDim2.new(0, 15, 0.22, 0)
 infoText.BackgroundTransparency = 1
-infoText.Text = "• Keys reset DAILY\n• Each key works ONCE per user\n• Get key from Discord\n• Key lasts 24 hours"
+infoText.Text = "• Keys reset DAILY\n• Each key works ONCE per user\n• Get your unique key from Discord\n• Key lasts 24 hours after activation"
 infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
 infoText.TextSize = 11
 infoText.Font = Enum.Font.Gotham
@@ -505,7 +512,7 @@ infoText.Parent = frame3
 
 local backToKeyBtn = Instance.new("TextButton")
 backToKeyBtn.Size = UDim2.new(0, quarterSize * 0.35, 0, 35)
-backToKeyBtn.Position = UDim2.new(0.25, -(quarterSize * 0.175), 0.8, 0)
+backToKeyBtn.Position = UDim2.new(0.25, -(quarterSize * 0.175), 0.82, 0)
 backToKeyBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 backToKeyBtn.Text = "Back"
 backToKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -519,7 +526,7 @@ backCorner.Parent = backToKeyBtn
 
 local discordBtn = Instance.new("TextButton")
 discordBtn.Size = UDim2.new(0, quarterSize * 0.35, 0, 35)
-discordBtn.Position = UDim2.new(0.75, -(quarterSize * 0.175), 0.8, 0)
+discordBtn.Position = UDim2.new(0.75, -(quarterSize * 0.175), 0.82, 0)
 discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 discordBtn.Text = "Discord"
 discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -532,15 +539,16 @@ discordCorner.CornerRadius = UDim.new(0, 6)
 discordCorner.Parent = discordBtn
 
 -- ================================
--- FRAME4: SystemPanel (1/2 RECTANGLE - Width = 1/2 screen, Height = 1/3 screen)
+-- FRAME4: SystemPanel (70% WIDTH, 90% HEIGHT)
 -- ================================
 local frame4 = Instance.new("Frame")
 frame4.Name = "SystemPanel"
 
-local rectWidth = screenSize.X / 2
-local rectHeight = screenSize.Y / 2.5
-frame4.Size = UDim2.new(0, rectWidth, 0, rectHeight)
-frame4.Position = UDim2.new(0.5, -rectWidth/2, 0.5, -rectHeight/2)
+local frame4Width = screenSize.X * 0.7
+local frame4Height = screenSize.Y * 0.9
+
+frame4.Size = UDim2.new(0, frame4Width, 0, frame4Height)
+frame4.Position = UDim2.new(0.5, -frame4Width/2, 0.5, -frame4Height/2)
 frame4.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame4.BackgroundTransparency = 0.15
 frame4.BorderSizePixel = 0
@@ -556,7 +564,7 @@ frame4Corner.Parent = frame4
 
 -- Title Bar
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 titleBar.BackgroundTransparency = 0.5
 titleBar.BorderSizePixel = 0
@@ -567,8 +575,8 @@ titleBarCorner.CornerRadius = UDim.new(0, 12)
 titleBarCorner.Parent = titleBar
 
 local menuBtn = Instance.new("TextButton")
-menuBtn.Size = UDim2.new(0, 60, 0, 30)
-menuBtn.Position = UDim2.new(0, 10, 0.5, -15)
+menuBtn.Size = UDim2.new(0, 70, 0, 32)
+menuBtn.Position = UDim2.new(0, 12, 0.5, -16)
 menuBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
 menuBtn.Text = "Menu"
 menuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -586,13 +594,13 @@ title4.Position = UDim2.new(0.5, -100, 0, 0)
 title4.BackgroundTransparency = 1
 title4.Text = "LEModz System"
 title4.TextColor3 = Color3.fromRGB(255, 200, 100)
-title4.TextSize = 18
+title4.TextSize = 20
 title4.Font = Enum.Font.GothamBold
 title4.Parent = titleBar
 
 local closeBtn4 = Instance.new("TextButton")
-closeBtn4.Size = UDim2.new(0, 60, 0, 30)
-closeBtn4.Position = UDim2.new(1, -70, 0.5, -15)
+closeBtn4.Size = UDim2.new(0, 70, 0, 32)
+closeBtn4.Position = UDim2.new(1, -82, 0.5, -16)
 closeBtn4.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 closeBtn4.Text = "Close"
 closeBtn4.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -606,8 +614,8 @@ closeBtnCorner.Parent = closeBtn4
 
 -- Sidebar Menu
 local menuSidebar = Instance.new("Frame")
-menuSidebar.Size = UDim2.new(0, 160, 1, -40)
-menuSidebar.Position = UDim2.new(-161, 0, 0, 40)
+menuSidebar.Size = UDim2.new(0, 180, 1, -45)
+menuSidebar.Position = UDim2.new(-181, 0, 0, 45)
 menuSidebar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 menuSidebar.BackgroundTransparency = 0.2
 menuSidebar.BorderSizePixel = 0
@@ -620,14 +628,14 @@ sidebarCorner.Parent = menuSidebar
 
 -- Menu Tab 1: Key Duration
 local menuTab1 = Instance.new("TextButton")
-menuTab1.Size = UDim2.new(1, -20, 0, 45)
+menuTab1.Size = UDim2.new(1, -20, 0, 50)
 menuTab1.Position = UDim2.new(0, 10, 0, 10)
 menuTab1.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 menuTab1.BackgroundTransparency = 0.3
 menuTab1.Text = "Key Duration"
 menuTab1.TextColor3 = Color3.fromRGB(255, 255, 255)
 menuTab1.Font = Enum.Font.GothamBold
-menuTab1.TextSize = 14
+menuTab1.TextSize = 15
 menuTab1.BorderSizePixel = 0
 menuTab1.Parent = menuSidebar
 
@@ -637,14 +645,14 @@ menuTab1Corner.Parent = menuTab1
 
 -- Menu Tab 2: Execute
 local menuTab2 = Instance.new("TextButton")
-menuTab2.Size = UDim2.new(1, -20, 0, 45)
-menuTab2.Position = UDim2.new(0, 10, 0, 65)
+menuTab2.Size = UDim2.new(1, -20, 0, 50)
+menuTab2.Position = UDim2.new(0, 10, 0, 70)
 menuTab2.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 menuTab2.BackgroundTransparency = 0.3
 menuTab2.Text = "Execute"
 menuTab2.TextColor3 = Color3.fromRGB(255, 255, 255)
 menuTab2.Font = Enum.Font.GothamBold
-menuTab2.TextSize = 14
+menuTab2.TextSize = 15
 menuTab2.BorderSizePixel = 0
 menuTab2.Parent = menuSidebar
 
@@ -654,8 +662,8 @@ menuTab2Corner.Parent = menuTab2
 
 -- Content Panel
 local contentPanel = Instance.new("Frame")
-contentPanel.Size = UDim2.new(1, -180, 1, -50)
-contentPanel.Position = UDim2.new(0, 170, 0, 50)
+contentPanel.Size = UDim2.new(1, -200, 1, -55)
+contentPanel.Position = UDim2.new(0, 190, 0, 55)
 contentPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 contentPanel.BackgroundTransparency = 0.3
 contentPanel.BorderSizePixel = 0
@@ -665,7 +673,7 @@ local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 8)
 contentCorner.Parent = contentPanel
 
--- TAB 1: KEY DURATION CONTENT
+-- ========== TAB 1: KEY DURATION CONTENT ==========
 local keyDurationPanel = Instance.new("Frame")
 keyDurationPanel.Name = "KeyDurationPanel"
 keyDurationPanel.Size = UDim2.new(1, 0, 1, 0)
@@ -674,8 +682,8 @@ keyDurationPanel.Visible = true
 keyDurationPanel.Parent = contentPanel
 
 local countdownBox = Instance.new("Frame")
-countdownBox.Size = UDim2.new(0, 250, 0, 100)
-countdownBox.Position = UDim2.new(0.5, -125, 0.4, 0)
+countdownBox.Size = UDim2.new(0, 320, 0, 140)
+countdownBox.Position = UDim2.new(0.5, -160, 0.4, 0)
 countdownBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 countdownBox.BackgroundTransparency = 0.2
 countdownBox.BorderSizePixel = 2
@@ -683,30 +691,30 @@ countdownBox.BorderColor3 = Color3.fromRGB(255, 100, 100)
 countdownBox.Parent = keyDurationPanel
 
 local countdownCorner2 = Instance.new("UICorner")
-countdownCorner2.CornerRadius = UDim.new(0, 8)
+countdownCorner2.CornerRadius = UDim.new(0, 10)
 countdownCorner2.Parent = countdownBox
 
 local timerLabel = Instance.new("TextLabel")
-timerLabel.Size = UDim2.new(1, 0, 0, 50)
-timerLabel.Position = UDim2.new(0, 0, 0, 10)
+timerLabel.Size = UDim2.new(1, 0, 0, 70)
+timerLabel.Position = UDim2.new(0, 0, 0, 20)
 timerLabel.BackgroundTransparency = 1
 timerLabel.Text = "00H 00M 00S"
 timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-timerLabel.TextSize = 24
+timerLabel.TextSize = 34
 timerLabel.Font = Enum.Font.GothamBold
 timerLabel.Parent = countdownBox
 
 local keyInfoLabel = Instance.new("TextLabel")
-keyInfoLabel.Size = UDim2.new(1, 0, 0, 25)
-keyInfoLabel.Position = UDim2.new(0, 0, 1, -30)
+keyInfoLabel.Size = UDim2.new(1, 0, 0, 30)
+keyInfoLabel.Position = UDim2.new(0, 0, 1, -35)
 keyInfoLabel.BackgroundTransparency = 1
 keyInfoLabel.Text = "Session expires after 24 hours"
 keyInfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-keyInfoLabel.TextSize = 11
+keyInfoLabel.TextSize = 13
 keyInfoLabel.Font = Enum.Font.Gotham
 keyInfoLabel.Parent = countdownBox
 
--- TAB 2: EXECUTE CONTENT
+-- ========== TAB 2: EXECUTE CONTENT ==========
 local executePanel = Instance.new("Frame")
 executePanel.Name = "ExecutePanel"
 executePanel.Size = UDim2.new(1, 0, 1, 0)
@@ -714,99 +722,126 @@ executePanel.BackgroundTransparency = 1
 executePanel.Visible = false
 executePanel.Parent = contentPanel
 
+-- Player Info Card
 local playerInfoCard = Instance.new("Frame")
-playerInfoCard.Size = UDim2.new(0, 280, 0, 180)
-playerInfoCard.Position = UDim2.new(0.5, -140, 0.5, -90)
+playerInfoCard.Size = UDim2.new(0, 420, 0, 240)
+playerInfoCard.Position = UDim2.new(0.5, -210, 0.45, -120)
 playerInfoCard.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 playerInfoCard.BackgroundTransparency = 0.2
-playerInfoCard.BorderSizePixel = 1
+playerInfoCard.BorderSizePixel = 2
 playerInfoCard.BorderColor3 = Color3.fromRGB(255, 100, 100)
 playerInfoCard.Parent = executePanel
 
 local playerCardCorner = Instance.new("UICorner")
-playerCardCorner.CornerRadius = UDim.new(0, 8)
+playerCardCorner.CornerRadius = UDim.new(0, 10)
 playerCardCorner.Parent = playerInfoCard
 
 local playerTitle = Instance.new("TextLabel")
-playerTitle.Size = UDim2.new(1, 0, 0, 28)
+playerTitle.Size = UDim2.new(1, 0, 0, 35)
 playerTitle.Position = UDim2.new(0, 0, 0, 0)
 playerTitle.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 playerTitle.BackgroundTransparency = 0.5
 playerTitle.Text = "Player Profile"
 playerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-playerTitle.TextSize = 13
+playerTitle.TextSize = 16
 playerTitle.Font = Enum.Font.GothamBold
 playerTitle.Parent = playerInfoCard
 
 local playerTitleCorner = Instance.new("UICorner")
-playerTitleCorner.CornerRadius = UDim.new(0, 8)
+playerTitleCorner.CornerRadius = UDim.new(0, 10)
 playerTitleCorner.Parent = playerTitle
 
+-- Username Row
 local usernameLabel = Instance.new("TextLabel")
-usernameLabel.Size = UDim2.new(0, 90, 0, 28)
-usernameLabel.Position = UDim2.new(0, 10, 0, 38)
+usernameLabel.Size = UDim2.new(0, 120, 0, 35)
+usernameLabel.Position = UDim2.new(0, 15, 0, 50)
 usernameLabel.BackgroundTransparency = 1
 usernameLabel.Text = "Username:"
 usernameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-usernameLabel.TextSize = 12
+usernameLabel.TextSize = 14
 usernameLabel.Font = Enum.Font.Gotham
 usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
 usernameLabel.Parent = playerInfoCard
 
 local usernameValue = Instance.new("TextLabel")
-usernameValue.Size = UDim2.new(0, 160, 0, 28)
-usernameValue.Position = UDim2.new(0, 105, 0, 38)
+usernameValue.Size = UDim2.new(0, 250, 0, 35)
+usernameValue.Position = UDim2.new(0, 145, 0, 50)
 usernameValue.BackgroundTransparency = 1
 usernameValue.Text = Player.Name
 usernameValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-usernameValue.TextSize = 12
+usernameValue.TextSize = 14
 usernameValue.Font = Enum.Font.GothamBold
 usernameValue.TextXAlignment = Enum.TextXAlignment.Left
 usernameValue.Parent = playerInfoCard
 
+-- User ID Row
 local userIdLabel = Instance.new("TextLabel")
-userIdLabel.Size = UDim2.new(0, 90, 0, 28)
-userIdLabel.Position = UDim2.new(0, 10, 0, 72)
+userIdLabel.Size = UDim2.new(0, 120, 0, 35)
+userIdLabel.Position = UDim2.new(0, 15, 0, 95)
 userIdLabel.BackgroundTransparency = 1
 userIdLabel.Text = "User ID:"
 userIdLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-userIdLabel.TextSize = 12
+userIdLabel.TextSize = 14
 userIdLabel.Font = Enum.Font.Gotham
 userIdLabel.TextXAlignment = Enum.TextXAlignment.Left
 userIdLabel.Parent = playerInfoCard
 
 local userIdValue = Instance.new("TextLabel")
-userIdValue.Size = UDim2.new(0, 160, 0, 28)
-userIdValue.Position = UDim2.new(0, 105, 0, 72)
+userIdValue.Size = UDim2.new(0, 250, 0, 35)
+userIdValue.Position = UDim2.new(0, 145, 0, 95)
 userIdValue.BackgroundTransparency = 1
 userIdValue.Text = tostring(Player.UserId)
 userIdValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-userIdValue.TextSize = 12
+userIdValue.TextSize = 14
 userIdValue.Font = Enum.Font.GothamBold
 userIdValue.TextXAlignment = Enum.TextXAlignment.Left
 userIdValue.Parent = playerInfoCard
 
+-- Time Row
 local timeLabel = Instance.new("TextLabel")
-timeLabel.Size = UDim2.new(0, 90, 0, 28)
-timeLabel.Position = UDim2.new(0, 10, 0, 106)
+timeLabel.Size = UDim2.new(0, 120, 0, 35)
+timeLabel.Position = UDim2.new(0, 15, 0, 140)
 timeLabel.BackgroundTransparency = 1
 timeLabel.Text = "Time:"
 timeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-timeLabel.TextSize = 12
+timeLabel.TextSize = 14
 timeLabel.Font = Enum.Font.Gotham
 timeLabel.TextXAlignment = Enum.TextXAlignment.Left
 timeLabel.Parent = playerInfoCard
 
 local timeValue = Instance.new("TextLabel")
-timeValue.Size = UDim2.new(0, 160, 0, 28)
-timeValue.Position = UDim2.new(0, 105, 0, 106)
+timeValue.Size = UDim2.new(0, 250, 0, 35)
+timeValue.Position = UDim2.new(0, 145, 0, 140)
 timeValue.BackgroundTransparency = 1
 timeValue.Text = os.date("%Y/%m/%d , %H:%M:%S")
 timeValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-timeValue.TextSize = 11
+timeValue.TextSize = 13
 timeValue.Font = Enum.Font.GothamBold
 timeValue.TextXAlignment = Enum.TextXAlignment.Left
 timeValue.Parent = playerInfoCard
+
+-- ABX and Codes Labels
+local abxLabel = Instance.new("TextLabel")
+abxLabel.Size = UDim2.new(0, 100, 0, 35)
+abxLabel.Position = UDim2.new(0, 15, 1, -50)
+abxLabel.BackgroundTransparency = 1
+abxLabel.Text = "ABX"
+abxLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+abxLabel.TextSize = 14
+abxLabel.Font = Enum.Font.GothamBold
+abxLabel.TextXAlignment = Enum.TextXAlignment.Left
+abxLabel.Parent = playerInfoCard
+
+local codesLabel = Instance.new("TextLabel")
+codesLabel.Size = UDim2.new(0, 100, 0, 35)
+codesLabel.Position = UDim2.new(0, 145, 1, -50)
+codesLabel.BackgroundTransparency = 1
+codesLabel.Text = "Codes"
+codesLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+codesLabel.TextSize = 14
+codesLabel.Font = Enum.Font.GothamBold
+codesLabel.TextXAlignment = Enum.TextXAlignment.Left
+codesLabel.Parent = playerInfoCard
 
 -- Update time function
 local function updateTime()
@@ -852,7 +887,6 @@ local function updateTimerDisplay()
         
         notify("Key Expired", "Your 24-hour session has ended. Get a new key from Discord tomorrow!", 5)
         
-        -- Reset to L1_Close
         currentState = "L1_Close"
         keyValidated = false
         currentUsedKey = nil
@@ -898,20 +932,58 @@ local function hasActiveSession()
 end
 
 -- ================================
+-- TAB SWITCHING
+-- ================================
+local function setActiveTab(tabIndex)
+    if tabIndex == 1 then
+        menuTab1.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        menuTab2.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+        keyDurationPanel.Visible = true
+        executePanel.Visible = false
+    else
+        menuTab1.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+        menuTab2.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        keyDurationPanel.Visible = false
+        executePanel.Visible = true
+        coroutine.wrap(updateTime)()
+    end
+end
+
+menuTab1.MouseButton1Click:Connect(function()
+    setActiveTab(1)
+end)
+
+menuTab2.MouseButton1Click:Connect(function()
+    setActiveTab(2)
+end)
+
+-- Menu button toggle
+local menuOpen = false
+menuBtn.MouseButton1Click:Connect(function()
+    menuOpen = not menuOpen
+    menuSidebar.Visible = menuOpen
+    if menuOpen then
+        menuSidebar:TweenPosition(UDim2.new(0, 0, 0, 45), "Out", "Quad", 0.3, true)
+    else
+        menuSidebar:TweenPosition(UDim2.new(-181, 0, 0, 45), "Out", "Quad", 0.3, true)
+        task.wait(0.3)
+        menuSidebar.Visible = false
+    end
+end)
+
+-- ================================
 -- BUTTON FUNCTIONALITY - STATE MACHINE
 -- ================================
 
 -- Frame1: OPEN button
 shapeButton.MouseButton1Click:Connect(function()
     if currentState == "L1_Close" then
-        -- L1_Close -> L1_Open (Show Key System)
         currentState = "L1_Open"
         frame1.Visible = false
         frame2.Visible = true
         frame3.Visible = false
         frame4.Visible = false
     elseif currentState == "L2_Close3" and keyValidated then
-        -- L2_Close3 -> L2_Open3 (Show System Panel)
         currentState = "L2_Open3"
         frame1.Visible = false
         frame2.Visible = false
@@ -923,10 +995,9 @@ shapeButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Frame2: Close button (X)
+-- Frame2: Close button
 closeBtn2.MouseButton1Click:Connect(function()
     if currentState == "L1_Open" then
-        -- Go back to L1_Close
         currentState = "L1_Close"
         frame1.Visible = true
         frame2.Visible = false
@@ -967,7 +1038,6 @@ confirmKeyBtn.MouseButton1Click:Connect(function()
             
             notify("Key Confirmed", "Key validated! You have 24 hours of access.", 5)
             
-            -- L1_Open -> L2_Close3 (Valid key, back to Frame1 with timer)
             currentState = "L2_Close3"
             frame1.Visible = true
             frame2.Visible = false
@@ -1005,7 +1075,6 @@ end)
 -- Frame4: Close button
 closeBtn4.MouseButton1Click:Connect(function()
     if currentState == "L2_Open3" then
-        -- L2_Open3 -> L2_Close3 (Back to Frame1)
         currentState = "L2_Close3"
         frame4.Visible = false
         frame1.Visible = true
@@ -1014,46 +1083,8 @@ closeBtn4.MouseButton1Click:Connect(function()
     end
 end)
 
--- Menu Tabs
-local function setActiveTab(tabIndex)
-    if tabIndex == 1 then
-        menuTab1.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        menuTab2.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-        keyDurationPanel.Visible = true
-        executePanel.Visible = false
-    else
-        menuTab1.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-        menuTab2.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        keyDurationPanel.Visible = false
-        executePanel.Visible = true
-        coroutine.wrap(updateTime)()
-    end
-end
-
-menuTab1.MouseButton1Click:Connect(function()
-    setActiveTab(1)
-end)
-
-menuTab2.MouseButton1Click:Connect(function()
-    setActiveTab(2)
-end)
-
--- Menu button
-local menuOpen = false
-menuBtn.MouseButton1Click:Connect(function()
-    menuOpen = not menuOpen
-    menuSidebar.Visible = menuOpen
-    if menuOpen then
-        menuSidebar:TweenPosition(UDim2.new(0, 0, 0, 40), "Out", "Quad", 0.3, true)
-    else
-        menuSidebar:TweenPosition(UDim2.new(-161, 0, 0, 40), "Out", "Quad", 0.3, true)
-        task.wait(0.3)
-        menuSidebar.Visible = false
-    end
-end)
-
 -- ================================
--- CHECK FOR EXISTING ACTIVE SESSION ON LOAD (PERSISTENT)
+-- CHECK FOR EXISTING ACTIVE SESSION ON LOAD
 -- ================================
 local hasSession, usedKey, usedAt = hasActiveSession()
 if hasSession and usedKey and usedAt then
@@ -1069,7 +1100,10 @@ if hasSession and usedKey and usedAt then
     local remaining = (24 * 60 * 60) - elapsed
     if remaining > 0 then
         startCountdown(remaining)
-        notify("Session Restored", "Your active session has been restored! " .. string.format("%02dH %02dM %02dS remaining", math.floor(remaining/3600), math.floor((remaining%3600)/60), remaining%60), 5)
+        local hours = math.floor(remaining / 3600)
+        local minutes = math.floor((remaining % 3600) / 60)
+        local seconds = remaining % 60
+        notify("Session Restored", string.format("Your active session has been restored! %02dH %02dM %02dS remaining", hours, minutes, seconds), 5)
     end
 end
 
