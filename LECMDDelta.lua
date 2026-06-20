@@ -231,6 +231,11 @@ local MAX_VISIBLE = 10
 local isOpen = false
 local isAnimating = false
 
+-- Dragging variables
+local isDragging = false
+local dragStart = nil
+local startPos = nil
+
 -- Functions
 local function AddCommandToHistory(command)
 	table.insert(CommandHistory, command)
@@ -281,17 +286,25 @@ local function ExecuteCommand(input)
 	
 	if command == "/walkspeed" then
 		if parts[2] == "default" then
-			Player.Character.Humanoid.WalkSpeed = 16
+			if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+				Player.Character.Humanoid.WalkSpeed = 16
+			end
 		elseif parts[2] and tonumber(parts[2]) then
-			Player.Character.Humanoid.WalkSpeed = tonumber(parts[2])
+			if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+				Player.Character.Humanoid.WalkSpeed = tonumber(parts[2])
+			end
 		else
 			AddCommandToHistory("Usage: /walkspeed <value> or /walkspeed default")
 		end
 	elseif command == "/jumppower" then
 		if parts[2] == "default" then
-			Player.Character.Humanoid.JumpPower = 50
+			if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+				Player.Character.Humanoid.JumpPower = 50
+			end
 		elseif parts[2] and tonumber(parts[2]) then
-			Player.Character.Humanoid.JumpPower = tonumber(parts[2])
+			if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+				Player.Character.Humanoid.JumpPower = tonumber(parts[2])
+			end
 		else
 			AddCommandToHistory("Usage: /jumppower <value> or /jumppower default")
 		end
@@ -352,11 +365,15 @@ local function BuildPopup()
 	PopupList.CanvasSize = UDim2.new(0, 0, 0, #Commands * 36)
 end
 
--- Toggle popup
+-- Toggle popup and execute /help
 local function TogglePopup()
-	PopupFrame.Visible = not PopupFrame.Visible
 	if PopupFrame.Visible then
+		PopupFrame.Visible = false
+	else
+		PopupFrame.Visible = true
 		BuildPopup()
+		-- Auto execute /help command
+		ExecuteCommand("/help")
 	end
 end
 
@@ -407,6 +424,47 @@ local function CloseFrame()
 	end)
 end
 
+-- Dragging functions
+local function StartDrag(input)
+	if isAnimating then return end
+	isDragging = true
+	dragStart = input.Position
+	startPos = MainFrame.Position
+end
+
+local function UpdateDrag(input)
+	if not isDragging or isAnimating then return end
+	
+	local delta = input.Position - dragStart
+	local newPos = UDim2.new(
+		startPos.X.Scale,
+		startPos.X.Offset + delta.X,
+		startPos.Y.Scale,
+		startPos.Y.Offset + delta.Y
+	)
+	
+	-- Keep within screen bounds
+	local screenSize = Player:GetMouse().ViewSizeX or 1920
+	local frameSize = MainFrame.AbsoluteSize
+	local maxX = screenSize - frameSize.X
+	local maxY = (Player:GetMouse().ViewSizeY or 1080) - 30
+	
+	newPos = UDim2.new(
+		0,
+		math.clamp(newPos.X.Offset, 0, maxX),
+		0,
+		math.clamp(newPos.Y.Offset, 0, maxY)
+	)
+	
+	MainFrame.Position = newPos
+end
+
+local function StopDrag()
+	isDragging = false
+	dragStart = nil
+	startPos = nil
+end
+
 -- Click functions
 OpenButton.MouseButton1Click:Connect(OpenFrame)
 CloseButton.MouseButton1Click:Connect(CloseFrame)
@@ -423,6 +481,57 @@ CommandBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
 		local input = CommandBox.Text
 		ExecuteCommand(input)
+	end
+end)
+
+-- Drag events on TitleBar
+TitleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		StartDrag(input)
+	end
+end)
+
+TitleBar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		UpdateDrag(input)
+	end
+end)
+
+TitleBar.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		StopDrag()
+	end
+end)
+
+-- Also allow dragging on MainFrame (but not on buttons)
+MainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		-- Check if click is on a button
+		local target = input.Position
+		local buttons = {OpenButton, CloseButton, CMDButton, ExecuteButton}
+		for _, btn in ipairs(buttons) do
+			if btn.Visible then
+				local absPos = btn.AbsolutePosition
+				local absSize = btn.AbsoluteSize
+				if target.X >= absPos.X and target.X <= absPos.X + absSize.X and
+				   target.Y >= absPos.Y and target.Y <= absPos.Y + absSize.Y then
+					return -- Don't drag if clicking a button
+				end
+			end
+		end
+		StartDrag(input)
+	end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		UpdateDrag(input)
+	end
+end)
+
+MainFrame.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		StopDrag()
 	end
 end)
 
